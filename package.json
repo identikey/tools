@@ -1,16 +1,26 @@
 {
   "name": "@identikey/tools",
   "version": "0.0.1",
+  "private": false,
+  "type": "module",
   "description": "Tools for digital sovereignty - identity, key management, encrypted storage, etc",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
   "author": "Duke Jones <duke@identikey.io>",
   "license": "MIT",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch"
+  },
   "devDependencies": {
-    "ts-node": "^10.9.2",
-    "tsdown": "^0.15.10",
-    "typescript": "^5.9.3"
+    "tsdown": "^0.15.9"
   }
 }

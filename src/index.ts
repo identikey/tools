@@ -1,1 +1,3 @@
-console.log("Hello, World!");
+import { hello } from './hello.ts'
+
+hello()
