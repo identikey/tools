@@ -1,7 +1,7 @@
 // Re-export keypair functionality
 export {
   type KeyPair,
-  generateKey,
+  generateKeyPair,
   toHex,
   toBase64,
   toBase58,
@@ -9,6 +9,21 @@ export {
   fromBase64,
   fromBase58,
 } from "./keypair.js";
+
+// Crypto primitives
+export { encrypt } from "./crypto/encryptor.js";
+export { decrypt } from "./crypto/decryptor.js";
+
+// Header management
+export { computeFingerprint } from "./header/fingerprint.js";
+export { buildHeader } from "./header/serialize.js";
+export { parseHeader } from "./header/parse.js";
+export {
+  BlobMetadataSchema,
+  BlobHeaderSchema,
+  type BlobMetadata,
+  type BlobHeader,
+} from "./header/schema.js";
 
 // Persona management (identity information blobs attached to base private key)
 export function createPersona() {}

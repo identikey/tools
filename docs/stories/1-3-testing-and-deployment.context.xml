@@ -1,0 +1,230 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>3</storyId>
+    <title>Testing and Deployment Readiness</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-28</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-encrypted-storage-3.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>developer deploying IdentiKey Tools</asA>
+    <iWant>comprehensive test coverage, security validation, and production-ready infrastructure</iWant>
+    <soThat>the encrypted storage system is secure, performant, and deployable with confidence</soThat>
+    <tasks>
+### Phase 1: Security Testing (AC: #1, #2, #3)
+- Create `tests/security/correlation.test.ts`: same plaintext + different keys → different hashes (AC: #1)
+- Create `tests/security/tampering.test.ts`: modify header bytes → decryption fails (AC: #2)
+- Create `tests/security/corruption.test.ts`: corrupt ciphertext → clear error message (AC: #3)
+- Document security test results in validation report (AC: #1, #2, #3)
+
+### Phase 2: Performance Benchmarking (AC: #4, #5, #6)
+- Create `tests/benchmarks/encryption-perf.test.ts`: measure encrypt + upload latency (AC: #4)
+- Create `tests/benchmarks/decryption-perf.test.ts`: measure download + decrypt latency (AC: #5)
+- Create `tests/benchmarks/hash-perf.test.ts`: measure SHA-256 throughput (AC: #6)
+- Generate performance report with baseline metrics (AC: #4, #5, #6)
+- Profile hot paths if targets not met, optimize critical functions (AC: #4, #5, #6)
+
+### Phase 3: CI/CD Pipeline (AC: #7, #8, #9)
+- Create `.github/workflows/ci.yml` with test job (AC: #7)
+- Configure MinIO service in CI workflow (AC: #8)
+- Add test coverage reporting (bun test --coverage) (AC: #9)
+- Configure coverage thresholds (90% minimum) (AC: #9)
+- Add lint step to CI (TypeScript + ESLint) (AC: #14)
+- Add build step to CI (bun run build) (AC: #7)
+
+### Phase 4: Production Deployment Documentation (AC: #10, #11, #12)
+- Document MinIO Docker setup for production (AC: #10)
+- Document MinIO Kubernetes deployment (Helm chart or manifest) (AC: #10)
+- Document AWS S3 adapter configuration (future, note as extension) (AC: #10)
+- Document environment variables with validation rules (AC: #11)
+- Add runtime env validation in EncryptedStorage constructor (AC: #11)
+- Document monitoring approach: health checks, metrics, alerts (AC: #12)
+- Document logging best practices: audit trails, error tracking (AC: #12)
+
+### Phase 5: User Documentation (AC: #13, #15)
+- Update README.md with project overview (AC: #13)
+- Add installation section: dependencies, Bun setup, MinIO local (AC: #13)
+- Add quick start guide: generate keys → encrypt → store → retrieve (AC: #13)
+- Add API reference: EncryptedStorage methods + parameters (AC: #13)
+- Add architecture diagram or link to arch doc (AC: #13)
+- Create `examples/basic-usage.ts`: full workflow demonstration (AC: #15)
+- Create `examples/key-management.ts`: KeyManager usage (AC: #15)
+- Create `examples/multiple-recipients.ts`: future multi-recipient pattern (AC: #15)
+
+### Phase 6: Code Quality and Polish (AC: #14)
+- Run linter: fix all TypeScript errors (AC: #14)
+- Run ESLint: fix all style issues (AC: #14)
+- Add JSDoc comments to public API methods (AC: #13)
+- Review error messages: ensure clarity and actionability (AC: #3, #11)
+- Final code review: check for TODOs, debug logs, unused imports (AC: #14)
+
+### Phase 7: Validation and Sign-Off (All AC)
+- Run full test suite: unit + integration + security + benchmarks (AC: #1-#9)
+- Verify all acceptance criteria met (AC: #1-#15)
+- Smoke test: deploy MinIO locally, run examples/basic-usage.ts (AC: #15)
+- Generate validation report: test results, coverage, performance metrics (AC: #1-#9)
+- Update tech spec with "Implementation Complete" status (All AC)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. **AC1:** Security test validates same plaintext encrypted with different keys produces different content hashes (no correlation)
+2. **AC2:** Security test validates header tampering is detected (AEAD authentication via TweetNaCl)
+3. **AC3:** Security test validates corrupted ciphertext fails decryption with clear error
+4. **AC4:** Performance benchmark: 1MB file encrypt + upload completes in < 500ms (local MinIO)
+5. **AC5:** Performance benchmark: 1MB file download + decrypt completes in < 300ms (local MinIO)
+6. **AC6:** Performance benchmark: Hash computation > 100 MB/s throughput
+7. **AC7:** CI/CD pipeline runs all tests (unit + integration) on every push
+8. **AC8:** CI/CD pipeline includes MinIO service container for integration tests
+9. **AC9:** Test coverage report shows >90% line coverage across crypto, header, storage, api modules
+10. **AC10:** Production deployment guide documents MinIO setup (Docker/Kubernetes/AWS S3)
+11. **AC11:** Environment variable validation prevents misconfiguration (missing credentials, invalid endpoint)
+12. **AC12:** Monitoring/logging guidance covers: storage health checks, encryption latency, failed decryptions
+13. **AC13:** README updated with: installation, quick start, API examples, architecture overview
+14. **AC14:** All linter errors resolved (no TypeScript errors, ESLint passing)
+15. **AC15:** Example usage scripts demonstrate: generate keypair → encrypt file → retrieve file → decrypt
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="Testing Approach">
+        Comprehensive testing strategy: Unit tests (Vitest), integration tests (MinIO Docker), security tests (correlation.test.ts checks same plaintext with different keys produces different hashes), performance benchmarks (1MB encrypt+upload &lt;500ms, download+decrypt &lt;300ms, hash computation &gt;100MB/s).
+      </doc>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="Deployment Strategy">
+        Development environment: docker-compose for MinIO, bun install/build/test. Production options: MinIO (Kubernetes/Docker Swarm with persistent volumes), AWS S3 (IAM roles, versioning), filesystem (dev/CI only). Security hardening: TLS, secrets manager, audit logging. Monitoring: health checks, latency metrics, failed decryption alerts.
+      </doc>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="CI/CD Pipeline">
+        GitHub Actions workflow example provided. MinIO service container for integration tests. Jobs: install, test, build. Uses oven-sh/setup-bun action. Performance targets documented for CI validation.
+      </doc>
+      <doc path="docs/architecture/content-addressable-encrypted-storage.md" title="Architecture" section="Testing Strategy">
+        Test categories: Unit (crypto primitives, header CBOR, AEAD), Integration (E2E encrypt→store→retrieve→decrypt), Security (correlation attacks, tampering detection, padding oracle), Performance (benchmarks with targets). CBOR edge cases and padding explicitly tested.
+      </doc>
+      <doc path="docs/architecture/content-addressable-encrypted-storage.md" title="Architecture" section="Performance Considerations">
+        Performance benchmarks with targets: 1MB encrypt+upload &lt;500ms, 1MB download+decrypt &lt;300ms, SHA-256 hash &gt;100MB/s. Profiling guidance: hot paths in encryption/hashing, CBOR overhead monitoring.
+      </doc>
+      <doc path="docs/architecture/validation-report-2025-10-28.md" title="Architecture Validation Report" section="Existing Validation">
+        Current validation: 27/71 passed (38%), 7 critical issues. Missing: version specificity, implementation patterns, project structure, error handling patterns, caching strategy. Story 3 addresses documentation gaps: README, deployment guide, error handling, monitoring guidance.
+      </doc>
+      <doc path="bmad/bmm/workflows/testarch/ci/checklist.md" title="CI/CD Checklist" section="CI Pipeline Setup">
+        BMAD test architecture CI checklist: prerequisites (git remote, test framework, local tests pass), pipeline config (YAML syntax, framework commands, Node version), parallel sharding (4 shards default), burn-in loop (10 iterations), caching (dependencies, browsers), artifacts (failure-only), retry logic (2-3 attempts), helper scripts, documentation.
+      </doc>
+    </docs>
+    <code>
+      <artifact path="src/keypair.test.ts" kind="test" symbol="Vitest test patterns" lines="1-65" reason="Existing test structure to follow - Story 3 adds security/benchmark tests using same patterns (describe/it blocks, expect assertions, async/await).">
+      </artifact>
+      <artifact path="package.json" kind="config" symbol="test scripts" lines="19-24" reason="Current test configuration - Story 3 adds coverage config, benchmark scripts, lint scripts to package.json.">
+      </artifact>
+      <artifact path="tsconfig.json" kind="config" symbol="TypeScript settings" lines="1-44" reason="Strict TypeScript config - Story 3 validates all code passes these checks (no errors, strict mode, noUncheckedIndexedAccess).">
+      </artifact>
+      <artifact path="README.md" kind="documentation" symbol="current README" lines="1-20" reason="Minimal README - Story 3 expands to include installation, quick start, API reference, architecture overview, examples.">
+      </artifact>
+      <artifact path="docs/stories/1-1-core-encryption-infrastructure.context.xml" kind="context" symbol="Story 1 dependency" lines="full-file" reason="Story 1 must be complete - security tests need encrypt/decrypt/buildHeader/parseHeader functions, benchmark tests need full crypto stack.">
+      </artifact>
+      <artifact path="docs/stories/1-2-storage-backend-and-api.context.xml" kind="context" symbol="Story 2 dependency" lines="full-file" reason="Story 2 must be complete - integration tests need EncryptedStorage API, MinIO adapter, KeyManager; performance benchmarks need full E2E workflow.">
+      </artifact>
+    </code>
+    <dependencies>
+      <typescript>
+        <package name="vitest" version="^4.0.4" status="installed">Test runner for unit, integration, security, and benchmark tests</package>
+        <package name="tweetnacl" version="^1.0.3" status="installed">Used in security tests for AEAD authentication validation</package>
+        <package name="@types/node" version="^24.9.1" status="installed">Node.js types for filesystem/crypto operations in benchmarks</package>
+      </typescript>
+      <devDependencies>
+        <package name="tsdown" version="^0.15.9" status="installed">Build tool - CI validates build passes</package>
+      </devDependencies>
+      <infrastructure>
+        <service name="minio" type="docker" status="required-for-tests">
+          MinIO Docker container for integration tests and benchmarks. CI workflow must configure MinIO service container. Required for AC4, AC5, AC8, AC13.
+        </service>
+        <service name="github-actions" type="ci-cd" status="needs-setup">
+          GitHub Actions CI/CD pipeline. Create .github/workflows/ci.yml with jobs: lint, test (with MinIO service), coverage, build. Required for AC7, AC8, AC9.
+        </service>
+      </infrastructure>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+- CRITICAL: Stories 1 and 2 must be COMPLETE before Story 3 implementation - requires full crypto stack, EncryptedStorage API, MinIO adapter, KeyManager for integration/security/benchmark tests
+- Security test AC1 validates NO CORRELATION: same plaintext with different keys → different content hashes (SHA-256 of header+ciphertext, not plaintext)
+- Security test AC2 validates AEAD: header tampering detected by TweetNaCl authenticated encryption
+- Performance targets are MANDATORY: 1MB encrypt+upload &lt;500ms, download+decrypt &lt;300ms, hash &gt;100MB/s (local MinIO)
+- Test coverage MUST be >90% line coverage across crypto, header, storage, api modules - enforce in CI
+- CI/CD pipeline MUST include MinIO service container for integration tests
+- Environment validation MUST occur at EncryptedStorage constructor - throw descriptive errors for missing/invalid config
+- All TypeScript/ESLint errors MUST be resolved before story completion
+- README MUST include: installation, quick start, API reference, architecture link
+- Examples MUST demonstrate complete workflows: keypair generation → encryption → storage → retrieval → decryption
+- Deployment docs MUST cover: Docker, Kubernetes, AWS S3 configuration
+- Monitoring docs MUST cover: health checks, encryption latency metrics, failed decryption alerts
+- All imports MUST use .js extension (TypeScript ESM requirement per tsconfig)
+- Test files: security tests in tests/security/, benchmarks in tests/benchmarks/, integration in tests/integration/
+- Validation report MUST document: test results, coverage metrics, performance benchmarks
+  </constraints>
+
+  <interfaces>
+    <interface name="Security Test: Correlation" kind="test-suite" signature="describe('Security: Correlation Attacks', () =&gt; { it('different keys produce different hashes', async () =&gt; { ... }); });" path="tests/security/correlation.test.ts (to be created)">
+      Validates content hashing prevents correlation attacks - same plaintext encrypted with different keys produces different content hashes
+    </interface>
+    <interface name="Security Test: Tampering" kind="test-suite" signature="describe('Security: Tampering Detection', () =&gt; { it('modified header fails decryption', async () =&gt; { ... }); });" path="tests/security/tampering.test.ts (to be created)">
+      Validates AEAD authentication - header tampering detected by TweetNaCl box authenticated encryption
+    </interface>
+    <interface name="Security Test: Corruption" kind="test-suite" signature="describe('Security: Ciphertext Corruption', () =&gt; { it('corrupted ciphertext throws clear error', async () =&gt; { ... }); });" path="tests/security/corruption.test.ts (to be created)">
+      Validates error handling - corrupted ciphertext fails decryption with descriptive error message
+    </interface>
+    <interface name="Benchmark: Encryption Performance" kind="test-suite" signature="describe('Benchmark: Encryption', () =&gt; { it('1MB encrypt+upload &lt;500ms', async () =&gt; { ... }); });" path="tests/benchmarks/encryption-perf.test.ts (to be created)">
+      Performance benchmark - measures encrypt + upload latency for 1MB files, validates &lt;500ms target
+    </interface>
+    <interface name="Benchmark: Decryption Performance" kind="test-suite" signature="describe('Benchmark: Decryption', () =&gt; { it('1MB download+decrypt &lt;300ms', async () =&gt; { ... }); });" path="tests/benchmarks/decryption-perf.test.ts (to be created)">
+      Performance benchmark - measures download + decrypt latency for 1MB files, validates &lt;300ms target
+    </interface>
+    <interface name="Benchmark: Hash Performance" kind="test-suite" signature="describe('Benchmark: Hash Computation', () =&gt; { it('SHA-256 &gt;100MB/s', async () =&gt; { ... }); });" path="tests/benchmarks/hash-perf.test.ts (to be created)">
+      Performance benchmark - measures SHA-256 hash throughput, validates &gt;100MB/s target
+    </interface>
+    <interface name="CI Workflow" kind="config" signature=".github/workflows/ci.yml with jobs: lint, test, coverage, build; services: minio" path=".github/workflows/ci.yml (to be created)">
+      GitHub Actions CI/CD pipeline - runs all tests on every push, includes MinIO service container, reports coverage
+    </interface>
+    <interface name="Example: Basic Usage" kind="example" signature="async function basicExample() { /* generate keypair, encrypt, store, retrieve, decrypt */ }" path="examples/basic-usage.ts (to be created)">
+      Example script demonstrating complete workflow from keypair generation through encryption, storage, retrieval, and decryption
+    </interface>
+    <interface name="Health Check Utility" kind="function" signature="async function checkStorageHealth(): Promise&lt;boolean&gt; { /* put test blob, get blob, delete blob, return success */ }" path="src/api/encrypted-storage.ts or separate utils file (to be added)">
+      Storage health check function for monitoring - validates backend connectivity and operations
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest test runner (bun test). Security tests in tests/security/, benchmarks in tests/benchmarks/, integration tests in tests/integration/. Follow existing test patterns from src/keypair.test.ts (describe/it blocks, expect assertions, async/await). Security tests validate cryptographic properties. Benchmarks measure actual latency with console.time/timeEnd or performance.now(), compare against targets (500ms, 300ms, 100MB/s). Integration tests require real MinIO Docker container. CI pipeline must run all test categories. Coverage target: >90% line coverage across crypto, header, storage, api modules. All tests must pass before story completion.
+    </standards>
+    <locations>
+      - tests/security/correlation.test.ts (AC1)
+      - tests/security/tampering.test.ts (AC2)
+      - tests/security/corruption.test.ts (AC3)
+      - tests/benchmarks/encryption-perf.test.ts (AC4)
+      - tests/benchmarks/decryption-perf.test.ts (AC5)
+      - tests/benchmarks/hash-perf.test.ts (AC6)
+      - .github/workflows/ci.yml (AC7, AC8)
+      - All existing unit/integration tests from Stories 1 and 2 must pass
+    </locations>
+    <ideas>
+      - AC1: Generate same plaintext, encrypt with 2 different keypairs, compute content hashes, assert hashes are different (validates no correlation via ciphertext hashing)
+      - AC2: Encrypt blob, parse header, modify 1 byte in header, attempt decryption, assert AEAD authentication fails (TweetNaCl box validates integrity)
+      - AC3: Encrypt blob, corrupt ciphertext bytes, attempt decryption, assert clear error message with context (not generic crypto error)
+      - AC4: Benchmark 1MB Buffer: start timer, encrypt, build header, concat blob, hash, upload to MinIO, stop timer, assert &lt;500ms
+      - AC5: Benchmark 1MB retrieval: start timer, download from MinIO, parse header, lookup key, decrypt, stop timer, assert &lt;300ms
+      - AC6: Benchmark hash throughput: create 100MB buffer, start timer, SHA-256 hash, stop timer, calculate MB/s, assert &gt;100MB/s
+      - AC7: CI workflow runs on push/PR, executes lint + test + build jobs, fails if any job fails
+      - AC8: CI workflow defines MinIO service container (minio/minio image, ports 9000:9000, env vars MINIO_ROOT_USER/PASSWORD)
+      - AC9: CI runs bun test --coverage, generates coverage report, enforces 90% minimum threshold (fail build if below)
+      - AC10: Deployment doc sections: Docker (docker run command with persistent volume), Kubernetes (Helm chart example or manifest), S3 (IAM role config, bucket policy)
+      - AC11: EncryptedStorage constructor validates env vars: MINIO_ENDPOINT (not empty), MINIO_PORT (valid number), MINIO_ACCESS_KEY/SECRET_KEY (not empty), throw descriptive errors
+      - AC12: Monitoring doc: health check function example, metrics to track (encrypt/decrypt latency, failed decryption count, storage capacity), alerting thresholds
+      - AC13: README sections: project overview (what it is), installation (bun install, dependencies), quick start (4-step workflow with code), API reference (EncryptedStorage methods), architecture link
+      - AC14: Run tsc --noEmit (no TypeScript errors), run eslint (if configured), fix all issues
+      - AC15: examples/basic-usage.ts: full script with comments, demonstrates generateKeyPair → encrypt → put → get → decrypt with error handling
+    </ideas>
+  </tests>
+</story-context>
+

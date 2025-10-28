@@ -29,6 +29,8 @@
   },
   "dependencies": {
     "bs58": "^6.0.0",
-    "tweetnacl": "^1.0.3"
+    "cbor": "^10.0.11",
+    "tweetnacl": "^1.0.3",
+    "zod": "^4.1.12"
   }
 }

@@ -32,6 +32,6 @@ export function fromBase58(str: string): Uint8Array {
   return bs58.decode(str);
 }
 
-export function generateKey(): KeyPair {
+export function generateKeyPair(): KeyPair {
   return nacl.sign.keyPair();
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  generateKey,
+  generateKeyPair,
   toHex,
   toBase64,
   toBase58,
@@ -10,9 +10,9 @@ import {
 } from "./keypair.js";
 
 describe("keypair", () => {
-  describe("generateKey", () => {
+  describe("generateKeyPair", () => {
     it("generates a valid ED25519 keypair", () => {
-      const kp = generateKey();
+      const kp = generateKeyPair();
 
       expect(kp.publicKey).toBeInstanceOf(Uint8Array);
       expect(kp.secretKey).toBeInstanceOf(Uint8Array);
@@ -21,8 +21,8 @@ describe("keypair", () => {
     });
 
     it("generates unique keys on each call", () => {
-      const kp1 = generateKey();
-      const kp2 = generateKey();
+      const kp1 = generateKeyPair();
+      const kp2 = generateKeyPair();
 
       expect(kp1.publicKey).not.toEqual(kp2.publicKey);
       expect(kp1.secretKey).not.toEqual(kp2.secretKey);
@@ -51,7 +51,7 @@ describe("keypair", () => {
     });
 
     it("round-trips real keypair data", () => {
-      const kp = generateKey();
+      const kp = generateKeyPair();
 
       const hexPub = toHex(kp.publicKey);
       const b64Sec = toBase64(kp.secretKey);

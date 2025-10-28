@@ -1,0 +1,172 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1</storyId>
+    <title>Core Encryption Infrastructure</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-28</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-encrypted-storage-1.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>developer using IdentiKey Tools</asA>
+    <iWant>foundational encryption primitives with self-contained blob headers</iWant>
+    <soThat>I can encrypt content with automatic key tracking and prepare for backend-agnostic storage</soThat>
+    <tasks>
+### Phase 1: Crypto Primitives (AC: #1, #2, #3)
+- Install dependencies: `bun add tweetnacl tweetnacl-util` (AC: #1)
+- Create `src/crypto/encryptor.ts` with `encrypt(plaintext, publicKey)` function (AC: #1)
+- Create `src/crypto/decryptor.ts` with `decrypt(ciphertext, privateKey)` function (AC: #2)
+- Create `src/header/fingerprint.ts` with `computeFingerprint(publicKey)` using SHA-256 (AC: #3)
+- Write unit tests: `tests/unit/crypto/encrypt.test.ts` (AC: #10)
+- Write unit tests: `tests/unit/crypto/decrypt.test.ts` (AC: #10)
+- Write unit tests: `tests/unit/header/fingerprint.test.ts` (AC: #9, #10)
+
+### Phase 2: Header Schema and Validation (AC: #4, #7)
+- Install dependencies: `bun add zod cbor` (AC: #4)
+- Create `src/header/schema.ts` with Zod schemas for BlobHeader and BlobMetadata (AC: #4)
+- Create `src/types/blob-metadata.ts` with TypeScript interfaces (AC: #4)
+- Write unit tests: Zod validation catches invalid headers (AC: #10)
+- Write unit tests: CBOR round-trip (metadata → encode → decode → metadata) (AC: #7, #10)
+
+### Phase 3: Header Serialization/Parsing (AC: #5, #6, #8)
+- Create `src/header/serialize.ts` with `buildHeader(metadata, fingerprint)` (AC: #5)
+- Implement wire format: version (1 byte) + fp_length (2 bytes BE) + fingerprint + md_length (2 bytes BE) + CBOR metadata (AC: #5)
+- Create `src/header/parse.ts` with `parseHeader(buffer)` extracting header + ciphertextOffset (AC: #6)
+- Validate parsed header with Zod before returning (AC: #6)
+- Write unit tests: `tests/unit/header/serialize.test.ts` (AC: #10)
+- Write unit tests: `tests/unit/header/parse.test.ts` (AC: #10)
+- Write integration test: full round-trip (encrypt → header → parse → decrypt) (AC: #8, #10)
+
+### Phase 4: Edge Cases and Error Handling (AC: #10)
+- Test large metadata (near 64KB limit) (AC: #10)
+- Test empty optional fields in metadata (AC: #7, #10)
+- Test invalid version byte rejection (AC: #10)
+- Test corrupted CBOR data rejection (AC: #10)
+- Test fingerprint length mismatch handling (AC: #10)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. **AC1:** TweetNaCl encryption wrapper (`encryptor.ts`) encrypts plaintext using Curve25519 public key via `tweetnacl.box`, returns ciphertext Buffer
+2. **AC2:** TweetNaCl decryption wrapper (`decryptor.ts`) decrypts ciphertext using private key via `tweetnacl.box.open`, returns original plaintext
+3. **AC3:** Key fingerprint utility (`fingerprint.ts`) computes SHA-256 hash of public key, returns 64-character hex string
+4. **AC4:** Zod schema (`schema.ts`) validates BlobHeader and BlobMetadata structures with strict runtime checks
+5. **AC5:** Header serialization (`serialize.ts`) builds wire-format header: [version | fp_length | fingerprint | md_length | CBOR_metadata]
+6. **AC6:** Header parsing (`parse.ts`) extracts header from buffer, returns `{ header, ciphertextOffset }` with Zod validation
+7. **AC7:** CBOR encoding/decoding round-trips metadata without data loss (algorithm, timestamp, optional fields)
+8. **AC8:** Round-trip test: plaintext → encrypt → build_header → parse_header → decrypt → original plaintext (exact match)
+9. **AC9:** Different public keys produce different fingerprints (deterministic, collision-free via SHA-256)
+10. **AC10:** Unit tests cover: crypto operations, header serialization, CBOR edge cases, invalid input rejection
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="Blob Structure">
+        Defines wire format: [HEADER] + [CIPHERTEXT] where header contains version (1 byte), key fingerprint length (2 bytes), fingerprint (variable), metadata length (2 bytes), CBOR-encoded metadata. Content hash = SHA-256(complete blob).
+      </doc>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="CBOR Metadata Schema">
+        Zod schema for BlobMetadataSchema with fields: algorithm (string), timestamp (number), originalFilename (optional), contentType (optional), plaintextChecksum (optional SHA-256 hex). BlobHeaderSchema includes version (literal 1), keyFingerprint (64-char hex regex), and metadata.
+      </doc>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="Key Fingerprinting">
+        Implementation: `createHash("sha256").update(publicKey).digest("hex")` - returns 64-character hex string for key identification.
+      </doc>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="Encryption Flow">
+        TweetNaCl box workflow: generate Curve25519 keypair via tweetnacl.box.keyPair(), encrypt plaintext with publicKey, compute fingerprint, encode metadata with CBOR, build header, concatenate header + ciphertext, hash complete blob.
+      </doc>
+      <doc path="docs/architecture/content-addressable-encrypted-storage.md" title="Architecture" section="Blob Structure">
+        Detailed header field layout with version byte (0x01), key fingerprint length (2 bytes), key fingerprint (SHA-256 hash), metadata length (2 bytes), CBOR metadata, followed by ciphertext. CBOR chosen for 20-40% size reduction vs JSON.
+      </doc>
+    </docs>
+    <code>
+      <artifact path="src/keypair.ts" kind="module" symbol="KeyPair" lines="1-37" reason="Existing TweetNaCl integration (sign.keyPair) - note this story needs box.keyPair for encryption. Interface and serialization helpers (toHex, fromHex, etc) are reusable.">
+      </artifact>
+      <artifact path="src/keypair.ts" kind="interface" symbol="KeyPair" lines="4-7" reason="Current KeyPair interface defines publicKey/secretKey as Uint8Array - compatible with TweetNaCl box encryption requirements.">
+      </artifact>
+      <artifact path="src/keypair.ts" kind="function" symbol="toHex" lines="10-12" reason="Helper to convert Uint8Array to hex string - useful for fingerprint display and debugging.">
+      </artifact>
+      <artifact path="src/keypair.test.ts" kind="test" symbol="keypair tests" lines="1-65" reason="Existing test patterns using Vitest - follow this structure for crypto/header tests. Shows round-trip testing approach and serialization validation.">
+      </artifact>
+      <artifact path="src/index.ts" kind="module" symbol="exports" lines="1-14" reason="Current module exports structure - new crypto/header functions should be added here for public API.">
+      </artifact>
+    </code>
+    <dependencies>
+      <typescript>
+        <package name="tweetnacl" version="^1.0.3" status="installed">Crypto primitives - already installed, provides box/secretbox for authenticated encryption</package>
+        <package name="zod" version="^4.1.12" status="installed">Runtime schema validation - already installed for header validation</package>
+        <package name="cbor" version="needs-install" status="missing">CBOR encoding/decoding (RFC 8949) - MUST BE INSTALLED via `bun add cbor`</package>
+        <package name="bs58" version="^6.0.0" status="installed">Base58 encoding - already available if needed for key serialization</package>
+        <package name="@types/node" version="^24.9.1" status="installed">Node.js types for crypto.createHash SHA-256 fingerprinting</package>
+      </typescript>
+      <devDependencies>
+        <package name="vitest" version="^4.0.4" status="installed">Test runner - already configured, use for all unit/integration tests</package>
+        <package name="tsdown" version="^0.15.9" status="installed">Build tool - already configured</package>
+      </devDependencies>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+- CRITICAL: Use tweetnacl.box (Curve25519 + XSalsa20-Poly1305) NOT tweetnacl.sign - current keypair.ts uses sign.keyPair which is incompatible
+- CBOR metadata encoding required - more compact than JSON (20-40% smaller)
+- Zod validation MUST occur before returning parsed headers - fail fast on malformed data
+- Wire format byte order: Big Endian for length fields (uint16 BE)
+- Header version byte fixed at 0x01 for MVP - future versions will increment
+- Fingerprint MUST be 64-character hex (SHA-256 output)
+- Metadata size limit: 64KB (enforce in buildHeader)
+- All imports MUST use .js extension (TypeScript ESM requirement per tsconfig)
+- Follow existing strict TypeScript settings: strict mode, noUncheckedIndexedAccess, exactOptionalPropertyTypes
+- Test files use .test.ts suffix and live alongside source files (pattern from keypair.test.ts)
+- Public API functions exported via src/index.ts
+  </constraints>
+
+  <interfaces>
+    <interface name="KeyPair" kind="interface" signature="interface KeyPair { publicKey: Uint8Array; secretKey: Uint8Array; }" path="src/keypair.ts">
+      Existing interface for keypairs - compatible with TweetNaCl box requirements (32-byte publicKey, 32-byte secretKey for box vs 64-byte for sign)
+    </interface>
+    <interface name="encrypt" kind="function" signature="encrypt(plaintext: Buffer, publicKey: Uint8Array): Promise&lt;Buffer&gt;" path="src/crypto/encryptor.ts (to be created)">
+      Core encryption function wrapping tweetnacl.box - takes plaintext and public key, returns ciphertext buffer
+    </interface>
+    <interface name="decrypt" kind="function" signature="decrypt(ciphertext: Buffer, privateKey: Uint8Array): Promise&lt;Buffer&gt;" path="src/crypto/decryptor.ts (to be created)">
+      Core decryption function wrapping tweetnacl.box.open - takes ciphertext and private key, returns plaintext buffer
+    </interface>
+    <interface name="computeFingerprint" kind="function" signature="computeFingerprint(publicKey: Uint8Array): string" path="src/header/fingerprint.ts (to be created)">
+      SHA-256 fingerprint generator - takes public key Uint8Array, returns 64-character hex string
+    </interface>
+    <interface name="BlobMetadataSchema" kind="zod-schema" signature="z.object({ algorithm: z.string(), timestamp: z.number(), originalFilename: z.string().optional(), contentType: z.string().optional(), plaintextChecksum: z.string().optional() })" path="src/header/schema.ts (to be created)">
+      Zod runtime validation schema for blob metadata - enforces required fields and types
+    </interface>
+    <interface name="BlobHeaderSchema" kind="zod-schema" signature="z.object({ version: z.literal(1), keyFingerprint: z.string().regex(/^[a-f0-9]{64}$/), metadata: BlobMetadataSchema })" path="src/header/schema.ts (to be created)">
+      Zod runtime validation schema for complete blob header - validates version, fingerprint format, and nested metadata
+    </interface>
+    <interface name="buildHeader" kind="function" signature="buildHeader(metadata: BlobMetadata, fingerprint: string): Buffer" path="src/header/serialize.ts (to be created)">
+      Header serialization - constructs wire-format buffer from metadata object and fingerprint string
+    </interface>
+    <interface name="parseHeader" kind="function" signature="parseHeader(blob: Buffer): { header: BlobHeader; ciphertextOffset: number }" path="src/header/parse.ts (to be created)">
+      Header parser - extracts and validates header from blob buffer, returns parsed header and offset to ciphertext start
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest test runner (already configured via `bun test` script). Test files use .test.ts suffix and live alongside source files (pattern: src/keypair.test.ts). Follow existing test structure: describe blocks for modules/functions, nested describe for feature groups, it blocks for individual test cases. Use expect assertions with toBe, toEqual, toBeInstanceOf. Test both happy paths and error cases. Integration tests should validate complete round-trip workflows.
+    </standards>
+    <locations>
+      - src/**/*.test.ts (co-located with source files, following keypair.test.ts pattern)
+      - Future integration tests may use tests/integration/ directory
+    </locations>
+    <ideas>
+      - AC1: Test encryptor.ts encrypts valid plaintext, returns Buffer, produces different output for same input (nonce randomness)
+      - AC2: Test decryptor.ts decrypts valid ciphertext, returns original plaintext, rejects tampered ciphertext
+      - AC3: Test fingerprint.ts produces 64-char hex, same key = same fingerprint, different keys = different fingerprints
+      - AC4: Test schema.ts Zod validation accepts valid headers, rejects invalid version, rejects malformed fingerprint, handles optional fields
+      - AC5: Test serialize.ts builds correct byte layout, handles large metadata (near 64KB), enforces metadata size limit
+      - AC6: Test parse.ts extracts header correctly, calculates correct ciphertextOffset, validates via Zod, rejects corrupted data
+      - AC7: Test CBOR round-trip with all fields populated, with optional fields missing, with large metadata
+      - AC8: Integration test full cycle: generate keypair → encrypt plaintext → build header → serialize blob → parse header → decrypt → verify plaintext match
+      - AC9: Test fingerprint uniqueness across multiple keypairs, determinism (same key called twice = same fingerprint)
+      - AC10: Comprehensive unit tests for edge cases: empty plaintext, maximum metadata size, invalid CBOR, wrong version byte
+    </ideas>
+  </tests>
+</story-context>
+
