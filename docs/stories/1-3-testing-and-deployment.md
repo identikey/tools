@@ -1,6 +1,6 @@
 # Story: Testing and Deployment Readiness
 
-Status: review
+Status: in-progress
 
 ## Story
 
@@ -88,6 +88,13 @@ so that **the encrypted storage system is secure, performant, and deployable wit
 - [x] Smoke test: deploy MinIO locally, run examples/basic-usage.ts (AC: #15)
 - [x] Generate validation report: test results, coverage, performance metrics (AC: #1-#9)
 - [x] Update tech spec with "Implementation Complete" status (All AC)
+
+### Review Follow-ups (AI) - 2025-10-29
+
+- [ ] [AI-Review][High] Execute performance benchmarks in CI integration job - add MinIO env vars to integration job, verify AC4/AC5 targets met (`.github/workflows/ci.yml`)
+- [ ] [AI-Review][High] Implement coverage threshold enforcement - parse bun coverage output and enforce 90% minimum, fail CI if below threshold (`.github/workflows/ci.yml` line 86-92, AC9)
+- [ ] [AI-Review][Medium] Fix dead documentation links in README - create `docs/testing-strategy.md` or remove references at lines 325, 472 (AC13)
+- [ ] [AI-Review][Medium] Fix ESM import in example script - replace `require("crypto")` with `import { createHash } from "crypto"` in `examples/basic-usage.ts` line 75-78 (AC15)
 
 ## Dev Notes
 
@@ -276,3 +283,217 @@ Story 1.3 (Testing and Deployment Readiness) implemented successfully across 7 p
 - src/storage/minio-adapter.ts (added ensureBucket method)
 - src/api/encrypted-storage.test.ts (fixed import)
 - src/crypto/decryptor.test.ts (fixed strict typing)
+
+---
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Master d0rje  
+**Date:** 2025-10-29  
+**Outcome:** **Changes Requested**
+
+### Summary
+
+Story 1.3 demonstrates strong technical execution with excellent security validation, comprehensive documentation, and well-structured CI/CD pipeline. However, **2 critical gaps prevent approval**: (1) AC4/AC5 performance targets not validated in CI (benchmarks exist but skip without MinIO), and (2) AC9 coverage threshold enforcement not implemented. Implementation quality is otherwise production-ready.
+
+### Key Findings
+
+#### High Severity
+
+1. **[AC4/AC5] Performance benchmarks not validated in CI**
+
+   - **Issue:** Encryption/decryption perf benchmarks skip without MinIO service (8 E2E tests). CI has MinIO configured but benchmarks don't execute in integration job.
+   - **Impact:** Performance targets (500ms encrypt, 300ms decrypt) unverified in automated pipeline.
+   - **Files:** `tests/benchmarks/encryption-perf.test.ts`, `tests/benchmarks/decryption-perf.test.ts`, `.github/workflows/ci.yml`
+   - **Fix:** Ensure benchmarks run in `integration` job after MinIO service starts. Add env vars to integration job.
+
+2. **[AC9] Coverage threshold validation not enforced**
+   - **Issue:** CI runs coverage but doesn't enforce 90% threshold. Line 91-92 in ci.yml has TODO comment: "Parse coverage JSON and fail if below threshold".
+   - **Impact:** Coverage regression could slip through. AC9 requires automated enforcement.
+   - **Files:** `.github/workflows/ci.yml` (line 86-92)
+   - **Fix:** Add coverage threshold check using bun's coverage output or third-party tool (e.g., `c8`, coverage badge action).
+
+#### Medium Severity
+
+3. **Dead documentation links in README**
+
+   - **Issue:** README references `docs/testing-strategy.md` (line 325, 472) which doesn't exist.
+   - **Impact:** Broken user experience, AC13 requires working links.
+   - **Files:** `README.md` lines 325, 472
+   - **Fix:** Create `docs/testing-strategy.md` or remove references.
+
+4. **Example script uses require() for crypto**
+   - **Issue:** `examples/basic-usage.ts` line 75-78 uses `require("crypto")` instead of ESM import.
+   - **Impact:** Inconsistent with project's ESM-only TypeScript config.
+   - **Files:** `examples/basic-usage.ts`
+   - **Fix:** Replace with `import { createHash } from "crypto"` at top of file.
+
+### Acceptance Criteria Coverage
+
+| AC   | Status            | Evidence                                                                                      |
+| ---- | ----------------- | --------------------------------------------------------------------------------------------- |
+| AC1  | ✅ PASS           | `tests/security/correlation.test.ts` - 3 tests validating no correlation via content hashing  |
+| AC2  | ✅ PASS           | `tests/security/tampering.test.ts` - 5 tests validating AEAD authentication detects tampering |
+| AC3  | ✅ PASS           | `tests/security/corruption.test.ts` - 7 tests validating clear error messages                 |
+| AC4  | ⚠️ **PENDING**    | `tests/benchmarks/encryption-perf.test.ts` exists but skips without MinIO in CI               |
+| AC5  | ⚠️ **PENDING**    | `tests/benchmarks/decryption-perf.test.ts` exists but skips without MinIO in CI               |
+| AC6  | ✅ PASS           | `tests/benchmarks/hash-perf.test.ts` - 1894 MB/s (18.9x above 100 MB/s target)                |
+| AC7  | ✅ PASS           | `.github/workflows/ci.yml` - lint/test/build jobs run on every push                           |
+| AC8  | ✅ PASS           | CI includes MinIO service container (lines 33-47, 131-143)                                    |
+| AC9  | ⚠️ **INCOMPLETE** | Coverage runs but 90% threshold not enforced (TODO comment)                                   |
+| AC10 | ✅ PASS           | `docs/deployment-guide.md` - Docker/K8s/S3 deployment comprehensive                           |
+| AC11 | ✅ PASS           | Deployment guide documents env validation with code examples (lines 320-383)                  |
+| AC12 | ✅ PASS           | Monitoring/logging guidance comprehensive (health checks, metrics, audit trail)               |
+| AC13 | ✅ PASS           | README comprehensive (install, quick start, API ref, architecture) - minor dead links         |
+| AC14 | ✅ PASS           | Linter passing (`tsc --noEmit` exits 0)                                                       |
+| AC15 | ✅ PASS           | Examples demonstrate full workflow (basic-usage, key-management, multiple-recipients)         |
+
+**Summary:** 12/15 PASS, 3 INCOMPLETE/PENDING
+
+### Test Coverage and Gaps
+
+**Current Coverage:**
+
+- ✅ 99 tests passing (unit, integration, security, benchmarks)
+- ✅ Duration: ~1.25s
+- ✅ Security: 15 tests validating cryptographic properties
+- ✅ Performance: Hash benchmarks validated
+- ⏳ E2E: 8 MinIO tests skip gracefully if service unavailable
+
+**Gaps:**
+
+1. **AC4/AC5 benchmarks not executed in CI** - Tests exist but need MinIO service integration
+2. **AC9 coverage threshold not automated** - Manual verification only
+3. **E2E tests skip in local dev** - Should run in CI integration job
+
+**Coverage Estimate:** Likely >90% (comprehensive unit/integration tests) but not validated due to AC9 gap.
+
+### Architectural Alignment
+
+**Architecture Adherence:** ✅ **Excellent**
+
+- Content-addressable storage validated (SHA-256 hashing, no correlation)
+- AEAD authentication via TweetNaCl confirmed
+- Zero-knowledge storage maintained (backend never sees plaintext)
+- Header format (CBOR) tested comprehensively
+- Storage adapter abstraction respected (MinioAdapter, MemoryAdapter)
+
+**Tech Spec Alignment:**
+
+- Follows tech-spec.md implementation phases 1-5
+- Crypto primitives match spec (TweetNaCl box, SHA-256, Base58 fingerprints)
+- Deployment strategy matches doc (Docker, K8s, S3)
+- Performance targets documented correctly
+
+**No architectural violations detected.**
+
+### Security Notes
+
+**Security Validation:** ✅ **Strong**
+
+From `docs/architecture/security-validation-2025-10-29.md`:
+
+- ✅ No plaintext correlation via content hashing (AC1)
+- ✅ AEAD detects tampering (AC2)
+- ✅ Clear error messages (AC3)
+- ✅ 15/15 security tests passing
+
+**Residual Risks (documented):**
+
+- ⚠️ Metadata leakage (timestamps, filenames not encrypted) - design choice
+- ⚠️ KeyManager in-memory only (no persistent key storage) - post-MVP
+- ⚠️ TweetNaCl not FIPS 140-2 validated - acceptable for dev tools
+
+**Security Recommendations (from validation doc):**
+
+- Add monitoring for failed decryption attempts (anomaly detection)
+- Document metadata privacy considerations (completed in deployment guide)
+- Consider rate limiting on failed auth attempts (future work)
+
+**No security blockers.** TweetNaCl appropriate for use case.
+
+### Best-Practices and References
+
+**Strong Adherence to Best Practices:**
+
+1. **Testing:** Comprehensive coverage across unit/integration/security/performance layers
+2. **Documentation:** README follows best practices (badges, TOC, quick start, API ref, examples)
+3. **CI/CD:** Multi-job workflow with health checks, proper sequencing (lint → test → build → integration)
+4. **Error Handling:** Descriptive messages validated in corruption tests
+5. **Type Safety:** Strict TypeScript config, Zod runtime validation
+
+**References Validated:**
+
+- TweetNaCl: Audited cryptography (NaCl by DJB et al.)
+- SHA-256: FIPS 180-4 compliant
+- CBOR: RFC 8949 standard
+- MinIO: S3-compatible API
+
+**Modern Tooling:**
+
+- Bun runtime (fast, native TypeScript)
+- GitHub Actions (standard CI/CD)
+- Zod (runtime type safety)
+
+### Action Items
+
+#### Must-Fix (High Priority)
+
+1. **[AC4/AC5] Execute performance benchmarks in CI integration job**
+
+   - Add MinIO env vars to integration job
+   - Verify benchmarks run and meet targets (<500ms encrypt, <300ms decrypt)
+   - Update completion notes with actual CI results
+   - **Owner:** Dev Agent
+   - **Files:** `.github/workflows/ci.yml`, test output logs
+
+2. **[AC9] Implement coverage threshold enforcement**
+   - Parse bun coverage output and enforce 90% minimum
+   - Fail CI build if coverage drops below threshold
+   - Update ci.yml line 86-92 (replace TODO)
+   - **Owner:** Dev Agent
+   - **Files:** `.github/workflows/ci.yml`
+
+#### Should-Fix (Medium Priority)
+
+3. **[AC13] Fix dead documentation links in README**
+
+   - Create `docs/testing-strategy.md` or remove references
+   - Validate all internal links (`grep -r "docs/" README.md`)
+   - **Owner:** Dev Agent
+   - **Files:** `README.md`, `docs/testing-strategy.md` (create)
+
+4. **[AC15] Fix ESM import in example script**
+   - Replace `require("crypto")` with `import { createHash } from "crypto"`
+   - Ensure example runs without errors (`bun run examples/basic-usage.ts`)
+   - **Owner:** Dev Agent
+   - **Files:** `examples/basic-usage.ts`
+
+#### Nice-to-Have (Low Priority)
+
+5. **Add explicit coverage report artifact in CI**
+   - Generate JSON/HTML coverage report
+   - Upload as CI artifact for inspection
+   - **Owner:** Dev Agent (optional)
+   - **Files:** `.github/workflows/ci.yml`
+
+### Change Log Entry
+
+```markdown
+**2025-10-29 - Senior Developer Review (AI)**
+
+- Status changed: review → in-progress
+- Review outcome: Changes Requested
+- Issues identified: AC4/AC5 benchmarks not executed in CI, AC9 coverage threshold not enforced
+- Action items: 4 high/medium priority fixes
+```
+
+### Recommendation
+
+**Status Change:** `review` → `in-progress`
+
+**Rationale:** Implementation quality is high but 2 critical AC gaps prevent production deployment. Fixes are straightforward (CI config updates). Re-run `dev-story` workflow to address action items, then re-submit for review.
+
+**Estimated Effort:** 1-2 hours to address all action items.
+
+---
