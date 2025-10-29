@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { encode, decode } from "cbor";
 import { BlobMetadataSchema, BlobHeaderSchema } from "./schema.js";
 import type { BlobMetadata, BlobHeader } from "./schema.js";

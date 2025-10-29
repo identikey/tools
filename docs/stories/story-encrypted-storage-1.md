@@ -59,6 +59,18 @@ so that **I can encrypt content with automatic key tracking and prepare for back
 - [x] Test corrupted CBOR data rejection (AC: #10)
 - [x] Test fingerprint length mismatch handling (AC: #10)
 
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][High] Add KeyManager security documentation warning (deferred to future: encrypted key storage) (AC: #2, File: src/api/encrypted-storage.ts:13-42)
+- [ ] [AI-Review][Med] Implement content hash verification in EncryptedStorage.get() method (AC: #8, File: src/api/encrypted-storage.ts:91)
+- [ ] [AI-Review][Med] Fix type safety violation: replace `catch (err: any)` with `catch (err: unknown)` in MinIO adapter (AC: #10, File: src/storage/minio-adapter.ts:52)
+- [ ] [AI-Review][Med] Remove or implement placeholder functions in public API (createPersona, queryPersona, etc.) (AC: #10, File: src/index.ts:40-59)
+- [ ] [AI-Review][Med] Document storage operation idempotency limitation - no retry on network failures between hash computation and storage (File: src/api/encrypted-storage.ts:81)
+- [ ] [AI-Review][Med] Update architecture doc to reflect TweetNaCl choice instead of RSA-OAEP reference (File: docs/architecture/content-addressable-encrypted-storage.md:306)
+- [ ] [AI-Review][Low] Track streaming API for large files (>100MB) as backlog item for post-MVP
+- [ ] [AI-Review][Low] Consider rate limiting at API gateway layer (operational concern, not code)
+- [ ] [AI-Review][Low] Add live MinIO integration tests in Story 1.2
+
 ## Dev Notes
 
 ### Technical Summary

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import nacl from "tweetnacl";
 import { encrypt } from "./crypto/encryptor.js";
 import { decrypt } from "./crypto/decryptor.js";
@@ -41,7 +41,7 @@ describe("integration: full round-trip", () => {
 
     // Step 6: Extract ciphertext
     const extractedCiphertext = blob.subarray(parsed.ciphertextOffset);
-    expect(extractedCiphertext).toEqual(ciphertext);
+    expect(Buffer.from(extractedCiphertext)).toEqual(Buffer.from(ciphertext));
 
     // Step 7: Decrypt ciphertext
     const decryptedPlaintext = decrypt(extractedCiphertext, keypair.secretKey);

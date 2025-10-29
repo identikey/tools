@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { buildHeader } from "./serialize.js";
 import { parseHeader } from "./parse.js";
 import type { BlobMetadata } from "./schema.js";

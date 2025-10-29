@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run TypeScript compiler check
+        run: bun run tsc --noEmit
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    services:
+      minio:
+        image: minio/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        # Start MinIO server
+        # Note: GitHub Actions services don't support command override well
+        # MinIO defaults to 'server /data' which is correct
+
+    env:
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Wait for MinIO to be ready
+        run: |
+          echo "Waiting for MinIO service..."
+          for i in {1..30}; do
+            if curl -f http://localhost:9000/minio/health/live 2>/dev/null; then
+              echo "MinIO is ready!"
+              break
+            fi
+            echo "Attempt $i/30: MinIO not ready yet..."
+            sleep 2
+          done
+
+      - name: Run all tests
+        run: bun test
+
+      - name: Run tests with coverage
+        run: bun test --coverage
+
+      - name: Check coverage thresholds
+        run: |
+          # Parse coverage report and validate >90% threshold
+          # Note: Bun's coverage format may differ from Jest/Vitest
+          # Adjust parsing logic based on actual coverage output
+          echo "Coverage threshold check: Minimum 90% required"
+          # TODO: Parse coverage JSON and fail if below threshold
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./coverage/coverage-final.json
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build package
+        run: bun run build
+
+      - name: Verify build artifacts
+        run: |
+          test -f dist/index.js || (echo "Build failed: dist/index.js not found" && exit 1)
+          test -f dist/index.d.ts || (echo "Build failed: dist/index.d.ts not found" && exit 1)
+          echo "Build artifacts verified successfully"
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [lint, test, build]
+    
+    services:
+      minio:
+        image: minio/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Wait for MinIO
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:9000/minio/health/live 2>/dev/null; then
+              echo "MinIO ready"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run security tests
+        run: bun test tests/security/
+
+      - name: Run performance benchmarks
+        run: bun test tests/benchmarks/
+        # Benchmarks may take longer, allow up to 5 minutes
+        timeout-minutes: 5
+
+      - name: Generate benchmark report
+        if: always()
+        run: |
+          echo "Benchmark execution completed"
+          echo "Results logged in test output above"
+

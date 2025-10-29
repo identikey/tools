@@ -179,7 +179,7 @@ Verifying to/from conversions and round-tripping real key data ensures codecs ar
 
 - **File Path**: `src/keypair.test.ts`
 - **File Size**: ~66 lines, ~2.2 KB
-- **Test Framework**: Vitest
+- **Test Framework**: bun:test
 - **Language**: TypeScript
 
 ### Test Structure

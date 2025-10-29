@@ -8,7 +8,7 @@
     "module": "nodenext",
     "target": "esnext",
     "lib": ["esnext"],
-    "types": ["node"],
+    // Note: No explicit "types" array - Bun provides types globally
 
     // Module Resolution
     "moduleResolution": "nodenext",

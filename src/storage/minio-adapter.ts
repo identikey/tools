@@ -72,6 +72,24 @@ export class MinioAdapter implements StorageAdapter {
       );
     }
   }
+
+  /**
+   * Ensure bucket exists, creating it if necessary (for tests/setup).
+   */
+  async ensureBucket(): Promise<void> {
+    try {
+      const exists = await this.client.bucketExists(this.bucket);
+      if (!exists) {
+        await this.client.makeBucket(this.bucket, "us-east-1");
+      }
+    } catch (err) {
+      throw new Error(
+        `MinIO bucket setup failed for "${this.bucket}": ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
+  }
 }
 
 /**

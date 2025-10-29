@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import nacl from "tweetnacl";
 import { encrypt } from "./encryptor.js";
 import { decrypt } from "./decryptor.js";
@@ -41,7 +41,10 @@ describe("decryptor", () => {
       const ciphertext = encrypt(plaintext, keypair.publicKey);
 
       // Tamper with the ciphertext (flip a bit in the encrypted data section)
-      ciphertext[60] ^= 0xff;
+      const byteToFlip = ciphertext[60];
+      if (byteToFlip !== undefined) {
+        ciphertext[60] = byteToFlip ^ 0xff;
+      }
 
       expect(() => {
         decrypt(ciphertext, keypair.secretKey);

@@ -28,6 +28,11 @@ export {
 // Storage
 export { type StorageAdapter } from "./storage/adapter.js";
 export { MinioAdapter } from "./storage/minio-adapter.js";
+export { MemoryAdapter } from "./storage/memory-adapter.js";
+export {
+  FilesystemAdapter,
+  type FilesystemConfig,
+} from "./storage/filesystem-adapter.js";
 export {
   type MinioConfig,
   type StorageConfig,
