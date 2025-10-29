@@ -25,6 +25,17 @@ export {
   type BlobHeader,
 } from "./header/schema.js";
 
+// Storage
+export { type StorageAdapter } from "./storage/adapter.js";
+export { MinioAdapter } from "./storage/minio-adapter.js";
+export {
+  type MinioConfig,
+  type StorageConfig,
+} from "./types/storage-config.js";
+
+// Main API
+export { EncryptedStorage, KeyManager } from "./api/encrypted-storage.js";
+
 // Persona management (identity information blobs attached to base private key)
 export function createPersona() {}
 export function queryPersona() {}

@@ -1,0 +1,145 @@
+import { createHash } from "crypto";
+import { encrypt } from "../crypto/encryptor.js";
+import { decrypt } from "../crypto/decryptor.js";
+import { computeFingerprint } from "../header/fingerprint.js";
+import { buildHeader } from "../header/serialize.js";
+import { parseHeader } from "../header/parse.js";
+import type { StorageAdapter } from "../storage/adapter.js";
+import type { BlobMetadata } from "../header/schema.js";
+
+/**
+ * Key manager for storing and retrieving keypairs by fingerprint.
+ */
+export class KeyManager {
+  private keys: Map<string, Uint8Array> = new Map();
+
+  /**
+   * Add a keypair indexed by its fingerprint.
+   */
+  addKey(publicKey: Uint8Array, privateKey: Uint8Array): void {
+    const fingerprint = computeFingerprint(publicKey);
+    this.keys.set(fingerprint, privateKey);
+  }
+
+  /**
+   * Retrieve private key by fingerprint.
+   * @throws Error if key not found
+   */
+  getPrivateKey(fingerprint: string): Uint8Array {
+    const key = this.keys.get(fingerprint);
+    if (!key) {
+      throw new Error(`Private key not found for fingerprint: ${fingerprint}`);
+    }
+    return key;
+  }
+
+  /**
+   * Check if key exists for fingerprint.
+   */
+  hasKey(fingerprint: string): boolean {
+    return this.keys.has(fingerprint);
+  }
+}
+
+/**
+ * Main encrypted storage API orchestrating encryption, header management, and storage.
+ */
+export class EncryptedStorage {
+  constructor(
+    private storage: StorageAdapter,
+    private keyManager: KeyManager
+  ) {}
+
+  /**
+   * Encrypt and store plaintext.
+   * @returns Content hash (SHA-256 of complete blob)
+   */
+  async put(
+    plaintext: Buffer,
+    publicKey: Uint8Array,
+    metadata?: Partial<BlobMetadata>
+  ): Promise<string> {
+    // Encrypt plaintext
+    const ciphertext = encrypt(plaintext, publicKey);
+
+    // Build header with metadata
+    const fingerprint = computeFingerprint(publicKey);
+    const fullMetadata: BlobMetadata = {
+      algorithm: "TweetNaCl-Box",
+      timestamp: Date.now(),
+      ...metadata,
+    };
+    const header = buildHeader(fullMetadata, fingerprint);
+
+    // Concat header + ciphertext
+    const blob = Buffer.concat([header, ciphertext]);
+
+    // Compute content hash
+    const contentHash = createHash("sha256").update(blob).digest("hex");
+
+    // Store blob at content hash key
+    await this.storage.put(contentHash, blob);
+
+    return contentHash;
+  }
+
+  /**
+   * Retrieve and decrypt blob by content hash.
+   * @param privateKey - Optional explicit key (otherwise lookup via fingerprint)
+   * @returns Decrypted plaintext
+   */
+  async get(contentHash: string, privateKey?: Uint8Array): Promise<Buffer> {
+    // Retrieve blob
+    const blob = await this.storage.get(contentHash);
+
+    // Parse header
+    const { header, ciphertextOffset } = parseHeader(blob);
+
+    // Extract ciphertext
+    const ciphertext = blob.subarray(ciphertextOffset);
+
+    // Get private key (explicit or lookup by fingerprint)
+    const key =
+      privateKey ?? this.keyManager.getPrivateKey(header.keyFingerprint);
+
+    // Decrypt
+    const plaintext = decrypt(ciphertext, key);
+
+    // Verify checksum if present
+    if (header.metadata.plaintextChecksum) {
+      const actualChecksum = createHash("sha256")
+        .update(plaintext)
+        .digest("hex");
+      if (actualChecksum !== header.metadata.plaintextChecksum) {
+        throw new Error(
+          `Checksum verification failed: expected ${header.metadata.plaintextChecksum}, got ${actualChecksum}`
+        );
+      }
+    }
+
+    return plaintext;
+  }
+
+  /**
+   * Get metadata without decrypting ciphertext.
+   */
+  async getMetadata(contentHash: string): Promise<BlobMetadata> {
+    const blob = await this.storage.get(contentHash);
+    const { header } = parseHeader(blob);
+    return header.metadata;
+  }
+
+  /**
+   * Check if blob exists at content hash.
+   */
+  async exists(contentHash: string): Promise<boolean> {
+    return this.storage.exists(contentHash);
+  }
+
+  /**
+   * Delete blob by content hash.
+   */
+  async delete(contentHash: string): Promise<void> {
+    return this.storage.delete(contentHash);
+  }
+}

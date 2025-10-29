@@ -87,7 +87,7 @@ Content hash = SHA-256(complete blob including header)
 | **tweetnacl-util** | ^0.15.1 | Encoding utilities for TweetNaCl               |
 | **zod**            | ^3.22.4 | Runtime schema validation                      |
 | **cbor**           | ^9.0.1  | CBOR encoding/decoding (RFC 8949)              |
-| **minio**          | ^7.1.3  | MinIO client for object storage                |
+| **minio**          | ^8.0.6  | MinIO client for object storage                |
 
 ### Development Dependencies
 

@@ -64,7 +64,7 @@
 
   <acceptanceCriteria>
 1. **AC1:** `StorageAdapter` interface defines `put(key, data)`, `get(key)`, `exists(key)`, `delete(key)` methods
-2. **AC2:** `MinioAdapter` implements StorageAdapter using MinIO client v7.1.3
+2. **AC2:** `MinioAdapter` implements StorageAdapter using MinIO client v8.x
 3. **AC3:** MinioAdapter PUT stores blob at content hash key, returns void on success
 4. **AC4:** MinioAdapter GET retrieves blob by content hash, returns Buffer
 5. **AC5:** MinioAdapter EXISTS checks blob presence, returns boolean
@@ -116,7 +116,7 @@
     </code>
     <dependencies>
       <typescript>
-        <package name="minio" version="^7.1.3" status="missing">MinIO S3-compatible client - MUST BE INSTALLED via `bun add minio`</package>
+        <package name="minio" version="^8.0.6" status="missing">MinIO S3-compatible client - MUST BE INSTALLED via `bun add minio`</package>
         <package name="tweetnacl" version="^1.0.3" status="installed">Crypto primitives from Story 1 - encrypt/decrypt functions</package>
         <package name="zod" version="^4.1.12" status="installed">Schema validation from Story 1 - header validation</package>
         <package name="cbor" version="needs-install" status="missing">CBOR encoding from Story 1 - metadata serialization</package>
