@@ -8,6 +8,7 @@ export {
   fromHex,
   fromBase64,
   fromBase58,
+  KeyManager,
 } from "./keypair.js";
 
 // Crypto primitives
@@ -39,26 +40,4 @@ export {
 } from "./types/storage-config.js";
 
 // Main API
-export { EncryptedStorage, KeyManager } from "./api/encrypted-storage.js";
-
-// Persona management (identity information blobs attached to base private key)
-export function createPersona() {}
-export function queryPersona() {}
-
-// Identity management
-export function createIdentity() {}
-export function queryIdentity() {}
-
-// Content-based addressing
-export function getContentAddress() {}
-
-// Storage encryption/decryption
-export function encryptStorage() {}
-export function decryptStorage() {}
-
-// S3-compatible API - proxyable to other backend storage
-export function uploadToStorage() {}
-export function downloadFromStorage() {}
-export function listStorage() {}
-export function deleteFromStorage() {}
-export function getStorageMetadata() {}
+export { EncryptedStorage } from "./api/encrypted-storage.js";

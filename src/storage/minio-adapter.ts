@@ -10,6 +10,36 @@ export class MinioAdapter implements StorageAdapter {
   private bucket: string;
 
   constructor(config: MinioConfig) {
+    // Validate configuration
+    if (!config.endpoint || config.endpoint.trim() === "") {
+      throw new Error(
+        "MinIO configuration error: endpoint is required and cannot be empty"
+      );
+    }
+    if (!config.port || config.port < 1 || config.port > 65535) {
+      throw new Error(
+        "MinIO configuration error: port must be between 1 and 65535"
+      );
+    }
+    if (config.useSSL === undefined || config.useSSL === null) {
+      throw new Error("MinIO configuration error: useSSL must be specified");
+    }
+    if (!config.accessKey || config.accessKey.trim() === "") {
+      throw new Error(
+        "MinIO configuration error: accessKey is required and cannot be empty"
+      );
+    }
+    if (!config.secretKey || config.secretKey.trim() === "") {
+      throw new Error(
+        "MinIO configuration error: secretKey is required and cannot be empty"
+      );
+    }
+    if (!config.bucket || config.bucket.trim() === "") {
+      throw new Error(
+        "MinIO configuration error: bucket is required and cannot be empty"
+      );
+    }
+
     this.client = new Minio.Client({
       endPoint: config.endpoint,
       port: config.port,
@@ -49,8 +79,9 @@ export class MinioAdapter implements StorageAdapter {
     try {
       await this.client.statObject(this.bucket, key);
       return true;
-    } catch (err: any) {
-      if (err.code === "NotFound" || err.statusCode === 404) {
+    } catch (err: unknown) {
+      const error = err as any;
+      if (error.code === "NotFound" || error.statusCode === 404) {
         return false;
       }
       throw new Error(

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import nacl from "tweetnacl";
-import { KeyManager, EncryptedStorage } from "./encrypted-storage.js";
+import { EncryptedStorage } from "./encrypted-storage.js";
+import { KeyManager } from "../keypair.js";
 import { computeFingerprint } from "../header/fingerprint.js";
 import type { StorageAdapter } from "../storage/adapter.js";
 

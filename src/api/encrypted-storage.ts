@@ -4,42 +4,9 @@ import { decrypt } from "../crypto/decryptor.js";
 import { computeFingerprint } from "../header/fingerprint.js";
 import { buildHeader } from "../header/serialize.js";
 import { parseHeader } from "../header/parse.js";
+import { KeyManager } from "../keypair.js";
 import type { StorageAdapter } from "../storage/adapter.js";
 import type { BlobMetadata } from "../header/schema.js";
-
-/**
- * Key manager for storing and retrieving keypairs by fingerprint.
- */
-export class KeyManager {
-  private keys: Map<string, Uint8Array> = new Map();
-
-  /**
-   * Add a keypair indexed by its fingerprint.
-   */
-  addKey(publicKey: Uint8Array, privateKey: Uint8Array): void {
-    const fingerprint = computeFingerprint(publicKey);
-    this.keys.set(fingerprint, privateKey);
-  }
-
-  /**
-   * Retrieve private key by fingerprint.
-   * @throws Error if key not found
-   */
-  getPrivateKey(fingerprint: string): Uint8Array {
-    const key = this.keys.get(fingerprint);
-    if (!key) {
-      throw new Error(`Private key not found for fingerprint: ${fingerprint}`);
-    }
-    return key;
-  }
-
-  /**
-   * Check if key exists for fingerprint.
-   */
-  hasKey(fingerprint: string): boolean {
-    return this.keys.has(fingerprint);
-  }
-}
 
 /**
  * Main encrypted storage API orchestrating encryption, header management, and storage.
@@ -53,6 +20,12 @@ export class EncryptedStorage {
   /**
    * Encrypt and store plaintext.
    * @returns Content hash (SHA-256 of complete blob)
+   *
+   * @remarks
+   * **Known Limitation**: This operation is not idempotent. Network failures
+   * between hash computation and storage may leave orphaned data. Transient
+   * failures can cause data loss, and concurrent writes may race. Retry logic
+   * and idempotency guarantees are deferred to post-MVP implementation.
    */
   async put(
     plaintext: Buffer,
@@ -91,6 +64,14 @@ export class EncryptedStorage {
   async get(contentHash: string, privateKey?: Uint8Array): Promise<Buffer> {
     // Retrieve blob
     const blob = await this.storage.get(contentHash);
+
+    // Verify content hash matches retrieved blob
+    const actualHash = createHash("sha256").update(blob).digest("hex");
+    if (actualHash !== contentHash) {
+      throw new Error(
+        `Content hash mismatch: expected ${contentHash}, got ${actualHash}`
+      );
+    }
 
     // Parse header
     const { header, ciphertextOffset } = parseHeader(blob);

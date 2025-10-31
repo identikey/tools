@@ -304,9 +304,10 @@ Notes:
 
 ### Encryption
 
-- **Algorithm**: RSA with OAEP padding or ECIES for asymmetric encryption
-- **Key Size**: Minimum 2048-bit for RSA, 256-bit for ECC
-- **Padding**: Always use proper padding (OAEP) to prevent chosen-ciphertext attacks
+- **Algorithm**: TweetNaCl box (Curve25519 ECDH + XSalsa20-Poly1305 AEAD)
+- **Key Size**: 256-bit Curve25519 keys
+- **Authentication**: Poly1305 MAC provides authenticated encryption, preventing tampering and chosen-ciphertext attacks
+- **Implementation Pattern**: Ephemeral keypair per encryption - generates fresh keypair, encrypts with recipient's public key, prepends [ephemeralPublic:32B][nonce:24B] to ciphertext
 
 ### Key Management
 

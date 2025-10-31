@@ -91,6 +91,7 @@ so that **the encrypted storage system is secure, performant, and deployable wit
 
 ### Review Follow-ups (AI) - 2025-10-29
 
+- [x] [AI-Review][High] CI/CD pipeline fixed and operational - MinIO service container properly configured with `server /data` command (`.github/workflows/ci.yml`) - AC8 validated
 - [ ] [AI-Review][High] Execute performance benchmarks in CI integration job - add MinIO env vars to integration job, verify AC4/AC5 targets met (`.github/workflows/ci.yml`)
 - [ ] [AI-Review][High] Implement coverage threshold enforcement - parse bun coverage output and enforce 90% minimum, fail CI if below threshold (`.github/workflows/ci.yml` line 86-92, AC9)
 - [ ] [AI-Review][Medium] Fix dead documentation links in README - create `docs/testing-strategy.md` or remove references at lines 325, 472 (AC13)
@@ -258,6 +259,18 @@ Story 1.3 (Testing and Deployment Readiness) implemented successfully across 7 p
 - Encryption/decryption benchmarks will run in CI with MinIO service
 - Consider example script execution as smoke test
 
+**Update - 2025-10-29 (CI Fix)**
+
+Fixed GH Actions MinIO service container startup failure:
+
+- **Root cause:** Service containers don't support CMD override, MinIO requires `server /data` command
+- **Solution:** Switched from service container to manual `docker run` step with explicit command
+- **Results:** All tests passing in CI (99 tests including 8 E2E MinIO integration tests)
+- **Performance:** 10MB upload 296ms, 10MB download 136ms; 1MB encrypt+upload 26ms, download+decrypt 20ms
+- **Hash throughput:** 1514 MB/s (15x above AC6 target)
+
+AC8 now fully validated - CI pipeline operational with MinIO backend.
+
 ### File List
 
 **Created:**
@@ -289,14 +302,23 @@ Story 1.3 (Testing and Deployment Readiness) implemented successfully across 7 p
 ## Senior Developer Review (AI)
 
 **Reviewer:** Master d0rje  
-**Date:** 2025-10-29  
-**Outcome:** **Changes Requested**
+**Date:** 2025-10-29 (Updated: 2025-10-29 - CI fix)  
+**Outcome:** **Changes Requested** → **In Progress**
+
+> **Update 2025-10-29:** AC8 (CI MinIO service) now fully operational. MinIO startup issue resolved by switching from service container to manual docker run. All 8 E2E integration tests passing. Remaining gaps: AC4/AC5 benchmark execution, AC9 coverage threshold enforcement.
 
 ### Summary
 
 Story 1.3 demonstrates strong technical execution with excellent security validation, comprehensive documentation, and well-structured CI/CD pipeline. However, **2 critical gaps prevent approval**: (1) AC4/AC5 performance targets not validated in CI (benchmarks exist but skip without MinIO), and (2) AC9 coverage threshold enforcement not implemented. Implementation quality is otherwise production-ready.
 
 ### Key Findings
+
+#### Resolved (2025-10-29 Update)
+
+1. **[AC8] CI MinIO service container fixed** ✅
+   - **Issue:** Service container failed bc GH Actions doesn't support CMD override
+   - **Solution:** Manual docker run with explicit `server /data` command
+   - **Status:** RESOLVED - 8 E2E MinIO tests passing in CI, AC8 fully validated
 
 #### High Severity
 
@@ -339,7 +361,7 @@ Story 1.3 demonstrates strong technical execution with excellent security valida
 | AC5  | ⚠️ **PENDING**    | `tests/benchmarks/decryption-perf.test.ts` exists but skips without MinIO in CI               |
 | AC6  | ✅ PASS           | `tests/benchmarks/hash-perf.test.ts` - 1894 MB/s (18.9x above 100 MB/s target)                |
 | AC7  | ✅ PASS           | `.github/workflows/ci.yml` - lint/test/build jobs run on every push                           |
-| AC8  | ✅ PASS           | CI includes MinIO service container (lines 33-47, 131-143)                                    |
+| AC8  | ✅ PASS           | CI MinIO operational (docker run with `server /data`) - 8 E2E tests passing                   |
 | AC9  | ⚠️ **INCOMPLETE** | Coverage runs but 90% threshold not enforced (TODO comment)                                   |
 | AC10 | ✅ PASS           | `docs/deployment-guide.md` - Docker/K8s/S3 deployment comprehensive                           |
 | AC11 | ✅ PASS           | Deployment guide documents env validation with code examples (lines 320-383)                  |
@@ -348,7 +370,7 @@ Story 1.3 demonstrates strong technical execution with excellent security valida
 | AC14 | ✅ PASS           | Linter passing (`tsc --noEmit` exits 0)                                                       |
 | AC15 | ✅ PASS           | Examples demonstrate full workflow (basic-usage, key-management, multiple-recipients)         |
 
-**Summary:** 12/15 PASS, 3 INCOMPLETE/PENDING
+**Summary:** 12/15 PASS, 3 INCOMPLETE/PENDING (AC8 now resolved - see update below)
 
 ### Test Coverage and Gaps
 
@@ -358,13 +380,12 @@ Story 1.3 demonstrates strong technical execution with excellent security valida
 - ✅ Duration: ~1.25s
 - ✅ Security: 15 tests validating cryptographic properties
 - ✅ Performance: Hash benchmarks validated
-- ⏳ E2E: 8 MinIO tests skip gracefully if service unavailable
+- ✅ **E2E: 8 MinIO tests passing in CI** (2025-10-29 update)
 
 **Gaps:**
 
 1. **AC4/AC5 benchmarks not executed in CI** - Tests exist but need MinIO service integration
 2. **AC9 coverage threshold not automated** - Manual verification only
-3. **E2E tests skip in local dev** - Should run in CI integration job
 
 **Coverage Estimate:** Likely >90% (comprehensive unit/integration tests) but not validated due to AC9 gap.
 

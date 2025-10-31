@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import nacl from "tweetnacl";
-import {
-  EncryptedStorage,
-  KeyManager,
-} from "../../src/api/encrypted-storage.js";
+import { EncryptedStorage } from "../../src/api/encrypted-storage.js";
+import { KeyManager } from "../../src/keypair.js";
 import { MinioAdapter } from "../../src/storage/minio-adapter.js";
 import type { MinioConfig } from "../../src/types/storage-config.js";
 
