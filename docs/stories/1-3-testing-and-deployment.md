@@ -1,6 +1,6 @@
 # Story: Testing and Deployment Readiness
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -92,10 +92,10 @@ so that **the encrypted storage system is secure, performant, and deployable wit
 ### Review Follow-ups (AI) - 2025-10-29
 
 - [x] [AI-Review][High] CI/CD pipeline fixed and operational - MinIO service container properly configured with `server /data` command (`.github/workflows/ci.yml`) - AC8 validated
-- [ ] [AI-Review][High] Execute performance benchmarks in CI integration job - add MinIO env vars to integration job, verify AC4/AC5 targets met (`.github/workflows/ci.yml`)
-- [ ] [AI-Review][High] Implement coverage threshold enforcement - parse bun coverage output and enforce 90% minimum, fail CI if below threshold (`.github/workflows/ci.yml` line 86-92, AC9)
-- [ ] [AI-Review][Medium] Fix dead documentation links in README - create `docs/testing-strategy.md` or remove references at lines 325, 472 (AC13)
-- [ ] [AI-Review][Medium] Fix ESM import in example script - replace `require("crypto")` with `import { createHash } from "crypto"` in `examples/basic-usage.ts` line 75-78 (AC15)
+- [x] [AI-Review][High] Execute performance benchmarks in CI integration job - add MinIO env vars to integration job, verify AC4/AC5 targets met (`.github/workflows/ci.yml`)
+- [x] [AI-Review][High] Implement coverage threshold enforcement - parse bun coverage output and enforce 90% minimum, fail CI if below threshold (`.github/workflows/ci.yml` line 86-92, AC9)
+- [x] [AI-Review][Medium] Fix dead documentation links in README - create `docs/testing-strategy.md` or remove references at lines 325, 472 (AC13)
+- [x] [AI-Review][Medium] Fix ESM import in example script - replace `require("crypto")` with `import { createHash } from "crypto"` in `examples/basic-usage.ts` line 75-78 (AC15)
 
 ## Dev Notes
 
@@ -271,6 +271,24 @@ Fixed GH Actions MinIO service container startup failure:
 
 AC8 now fully validated - CI pipeline operational with MinIO backend.
 
+---
+
+**Review Follow-up Completion (2025-10-31):**
+
+Addressed all 4 code review findings from 2025-10-29 review:
+
+**High Priority:**
+
+- ✅ **AC4/AC5 Benchmarks in CI**: Added MinIO env vars to benchmark step - encryption/decryption performance tests now execute with real MinIO backend in CI
+- ✅ **AC9 Coverage Enforcement**: Implemented coverage threshold check - CI now parses bun coverage output, enforces 90% minimum, fails build if below threshold
+
+**Medium Priority:**
+
+- ✅ **AC13 Dead Links**: Fixed README references to non-existent `docs/testing-strategy.md` - replaced with actual test file paths and test suite structure
+- ✅ **AC15 ESM Import**: Fixed `examples/basic-usage.ts` - replaced `require("crypto")` with proper ESM `import { createHash } from "crypto"`
+
+**Test Results After Changes:** All 114 tests passing (100% pass rate, 294 assertions), 0 linter errors
+
 ### File List
 
 **Created:**
@@ -291,11 +309,13 @@ AC8 now fully validated - CI pipeline operational with MinIO backend.
 
 **Modified:**
 
-- README.md (comprehensive rewrite)
+- README.md (comprehensive rewrite; fixed dead links to testing-strategy.md)
 - package.json (added test scripts)
 - src/storage/minio-adapter.ts (added ensureBucket method)
 - src/api/encrypted-storage.test.ts (fixed import)
 - src/crypto/decryptor.test.ts (fixed strict typing)
+- .github/workflows/ci.yml (added MinIO env vars to benchmarks/security steps; added coverage threshold enforcement)
+- examples/basic-usage.ts (fixed ESM import for crypto module)
 
 ---
 

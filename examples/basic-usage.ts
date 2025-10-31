@@ -13,6 +13,7 @@
  * - Environment variables set (or use defaults)
  */
 
+import { createHash } from "crypto";
 import nacl from "tweetnacl";
 import { EncryptedStorage, KeyManager } from "../src/api/encrypted-storage.js";
 import { MinioAdapter } from "../src/storage/minio-adapter.js";
@@ -72,10 +73,7 @@ async function basicUsageExample() {
   const contentHash = await storage.put(plaintext, keypair.publicKey, {
     originalFilename: "secret.txt",
     contentType: "text/plain",
-    plaintextChecksum: require("crypto")
-      .createHash("sha256")
-      .update(plaintext)
-      .digest("hex"),
+    plaintextChecksum: createHash("sha256").update(plaintext).digest("hex"),
   });
 
   console.log("  ✓ Encrypted and stored");

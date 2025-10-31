@@ -43,10 +43,46 @@ jobs:
         run: bun test
 
       - name: Run benchmarks
+        env:
+          MINIO_ENDPOINT: localhost
+          MINIO_PORT: 9000
+          MINIO_USE_SSL: false
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
         run: bun test tests/benchmarks/
 
       - name: Run security tests
+        env:
+          MINIO_ENDPOINT: localhost
+          MINIO_PORT: 9000
+          MINIO_USE_SSL: false
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
         run: bun test tests/security/
+
+      - name: Check test coverage
+        env:
+          MINIO_ENDPOINT: localhost
+          MINIO_PORT: 9000
+          MINIO_USE_SSL: false
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+        run: |
+          # Run tests with coverage
+          bun test --coverage > coverage-output.txt 2>&1 || true
+          
+          # Extract coverage percentage from bun output
+          COVERAGE=$(grep -oP '\d+\.\d+%' coverage-output.txt | head -1 | tr -d '%')
+          
+          echo "Coverage: ${COVERAGE}%"
+          
+          # Enforce 90% minimum threshold
+          if (( $(echo "$COVERAGE < 90.0" | bc -l) )); then
+            echo "❌ Coverage ${COVERAGE}% is below 90% threshold"
+            exit 1
+          fi
+          
+          echo "✅ Coverage ${COVERAGE}% meets 90% threshold"
 
       - name: Cleanup
         if: always()

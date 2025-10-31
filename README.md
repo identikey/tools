@@ -322,7 +322,7 @@ interface FilesystemConfig {
 - `async ensureRoot(): Promise<void>` - Creates root directory
 - `async clear(): Promise<void>` - Deletes all blobs
 
-See [`docs/testing-strategy.md`](docs/testing-strategy.md) for detailed adapter usage.
+See [`tests/e2e/minio-integration.test.ts`](tests/e2e/minio-integration.test.ts) for detailed adapter usage examples.
 
 ### BlobMetadata
 
@@ -469,7 +469,11 @@ Current coverage: **99+ tests**, covering:
 
 **All unit tests run offline** with no network dependency. E2E tests skip gracefully if MinIO not available.
 
-See [`docs/testing-strategy.md`](docs/testing-strategy.md) for details.
+Test suite includes:
+- Unit tests: `src/**/*.test.ts`
+- Security validation: `tests/security/`
+- Performance benchmarks: `tests/benchmarks/`
+- E2E integration: `tests/e2e/`
 
 ## Security
 
