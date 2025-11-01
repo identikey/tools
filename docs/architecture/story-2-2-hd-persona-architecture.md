@@ -46,19 +46,22 @@ Persona Seed (from BIP-39 mnemonic)
 
 ### Decision 2: HD Derivation Standards
 
-**Ed25519 Keys:** SLIP-0010 (hardened-only)
+**All Keys:** HKDF-SHA512 (uniform method)
 
-- Industry standard for Ed25519 HD derivation
-- Used by Trezor, Ledger for Ed25519 chains
-- Properly handles Ed25519's non-linear keyspace
-- Hardened-only prevents extended public key attacks
-
-**X25519 Keys:** HKDF-SHA512 (hardened with domain separation)
-
-- Cleaner for X25519 than forcing SLIP-0010
-- Explicit domain separation via info strings
+- **Native support for string-based paths** via info parameter
+- Explicit domain separation via curve-specific salts
 - Deterministic, auditable, curve-safe
-- Compatible with future key types
+- Single implementation for all key types
+- Simpler than SLIP-0010 (no chain codes, no parent tracking)
+- Extensible to arbitrary curves without method changes
+
+**Rationale for HKDF Uniformity:**
+
+- Custom paths (`ik:v1:ed25519/0/identity/0`) incompatible with hardware wallets regardless
+- SLIP-0010 designed for numeric BIP-44 paths, awkward for semantic strings
+- HKDF's info parameter is purpose-built for custom domain separation
+- Cryptographically equivalent security with simpler implementation
+- Future-proof for post-quantum crypto (Kyber, Dilithium, etc.)
 
 **Mnemonic:** BIP-39 (12 words)
 
@@ -218,17 +221,18 @@ Rotated: ik:v1:x25519/0/encryption/1
 
 ### Decision 7: Implementation Libraries
 
-| Library         | Version | Purpose                        | Rationale                          |
-| --------------- | ------- | ------------------------------ | ---------------------------------- |
-| `@scure/bip39`  | ^1.4.0  | BIP-39 mnemonic generation     | Modern, audited, TypeScript-first  |
-| `@scure/bip32`  | ^1.5.0  | SLIP-0010 derivation (Ed25519) | Supports SLIP-0010 out of box      |
-| `@noble/hashes` | ^1.5.0  | HKDF-SHA512, PBKDF2            | Zero-dependency, tree-shakeable    |
-| `@noble/curves` | ^1.6.0  | Ed25519 + X25519 primitives    | Audited, maintained by Paul Miller |
-| `tweetnacl`     | ^1.0.3  | Crypto operations (existing)   | Continue using for compatibility   |
+| Library         | Version | Purpose                               | Rationale                                    |
+| --------------- | ------- | ------------------------------------- | -------------------------------------------- |
+| `@scure/bip39`  | ^1.4.0  | BIP-39 mnemonic generation            | Modern, audited, TypeScript-first            |
+| `@noble/hashes` | ^1.5.0  | HKDF-SHA512, SHA-256, SHA-512, PBKDF2 | Zero-dependency, tree-shakeable, uniform KDF |
+| `@noble/curves` | ^1.6.0  | Ed25519 + X25519 primitives           | Audited, maintained by Paul Miller           |
+| `tweetnacl`     | ^1.0.3  | Crypto operations (existing)          | Continue using for compatibility             |
+
+**Note:** ~~@scure/bip32~~ not needed - HKDF-SHA512 uniformly replaces SLIP-0010
 
 **Hybrid Approach:**
 
-- **HD Derivation:** @scure/@noble stack (TweetNaCl doesn't do HD/BIP-39)
+- **HD Derivation:** @noble/hashes HKDF-SHA512 (uniform for all keys)
 - **Crypto Operations:** Keep TweetNaCl for `crypto_box` / `crypto_secretbox` (already working, hard to misuse)
 - **Future Migration:** Plan transition to @noble/curves for consistency (defer to future story)
 
@@ -271,10 +275,12 @@ Algorithm: xsalsa20poly1305
    - Display once during keygen
    - Derive 64-byte seed via PBKDF2-HMAC-SHA512
 
-2. **SLIP-0010 Derivation (Ed25519)**
+2. **HKDF-SHA512 Derivation (Ed25519)**
 
-   - Master key from seed: `HMAC-SHA512("ed25519 seed", seed)`
-   - Hardened child derivation per path segment
+   - Salt: `SHA-256("ik:ed25519:root")`
+   - Info: `UTF-8("ik:v1:ed25519/0/identity/0")`
+   - Output: 32 bytes → clamp per Ed25519 rules
+   - Public key: Ed25519 basepoint multiplication
    - Path: `ik:v1:ed25519/0/identity/0`
 
 3. **HKDF-SHA512 Derivation (X25519)**
@@ -282,6 +288,7 @@ Algorithm: xsalsa20poly1305
    - Salt: `SHA-256("ik:x25519:root")`
    - Info: `UTF-8("ik:v1:x25519/0/encryption/0")`
    - Output: 32 bytes → clamp to X25519 scalar
+   - Public key: X25519 scalarMult.base
    - Path: `ik:v1:x25519/0/encryption/0`
 
 4. **Fingerprint Computation**
@@ -340,9 +347,10 @@ Algorithm: xsalsa20poly1305
 **`src/keypair.ts`:**
 
 - Keep existing functions for backward compatibility
-- Add HD derivation functions:
-  - `deriveEd25519(seed: Uint8Array, path: string): KeyPair`
-  - `deriveX25519(seed: Uint8Array, path: string): KeyPair`
+- Add unified HD derivation:
+  - `deriveKey(seed: Uint8Array, path: string, curve: 'ed25519' | 'x25519'): KeyPair`
+  - `deriveEd25519(seed: Uint8Array, path: string): KeyPair` (wrapper)
+  - `deriveX25519(seed: Uint8Array, path: string): KeyPair` (wrapper)
   - `generateMnemonic(): string`
   - `mnemonicToSeed(mnemonic: string): Uint8Array`
 
@@ -466,21 +474,25 @@ test("HD derivation matches KAT vectors", () => {
     "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
   );
 
-  // Ed25519 identity key
+  // Ed25519 identity key (HKDF-SHA512)
   const edPath = "ik:v1:ed25519/0/identity/0";
   const edKey = deriveEd25519(seed, edPath);
-  expect(bytesToBase58(edKey.publicKey)).toBe(
-    "CXUz8d1QzLvFQMcRhzPg4VYDfWCXhBxJvBJxp7NZz8wN"
-  );
+  expect(bytesToBase58(edKey.publicKey)).toBe("[TO BE GENERATED WITH HKDF]");
 
-  // X25519 encryption key
+  // X25519 encryption key (HKDF-SHA512)
   const x25519Path = "ik:v1:x25519/0/encryption/0";
   const x25519Key = deriveX25519(seed, x25519Path);
   expect(bytesToBase58(x25519Key.publicKey)).toBe(
-    "HwN2k8QvZxCxJhN4pM7TvR3kL5fY9gW2sB6xP1dA8zQy"
+    "[TO BE GENERATED WITH HKDF]"
   );
+
+  // Verify HKDF parameters
+  expect(edKey.derivationMethod).toBe("HKDF-SHA512");
+  expect(x25519Key.derivationMethod).toBe("HKDF-SHA512");
 });
 ```
+
+**Note:** Test vectors need regeneration with HKDF method. See `scripts/generate-hd-kats.mjs` implementation.
 
 ---
 

@@ -204,12 +204,19 @@ See: `docs/architecture/hd-key-hierarchy-ik-v1.md`
 
 **Key Points:**
 
-- Ed25519: SLIP-0010 hardened-only derivation
-- X25519: HKDF-SHA512 hardened derivation with domain separation
+- **All Keys:** HKDF-SHA512 uniform derivation (Ed25519 + X25519)
+- Native support for semantic string paths via info parameter
 - Personas are independent seeds (no cross-persona paths)
 - Path format: `ik:v1:<curve>/<account>/<role>/<index>`
 - Fingerprints: Base58-encoded SHA-256 of public key
 - Short form: `ed1-` or `x1-` prefix + base58btc of first 10 bytes
+
+**Why HKDF Instead of SLIP-0010:**
+
+- Custom string paths incompatible with hardware wallets anyway
+- HKDF's info parameter designed for semantic paths
+- Simpler implementation (no chain codes)
+- Extensible to all future curves uniformly
 
 ## Implementation Checklist
 

@@ -1,0 +1,402 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>2.2</storyId>
+    <title>HD Persona Architecture with Dual Keys</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-01</generatedAt>
+    <generator>BMAD Story Context Workflow (Updated: SLIP-0010 removed)</generator>
+    <sourceStoryPath>docs/stories/2-2-dual-key-persona-architecture.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>developer integrating IdentiKey Tools</asA>
+    <iWant>HD key derivation for personas with dual keys (Ed25519 signing + X25519 encryption) backed by BIP-39 mnemonics</iWant>
+    <soThat>I can back up all keys with a single 12-word phrase, maintain separation between signing and encryption operations, and enable future features like persona publishing and key rotation</soThat>
+    <tasks>
+      <phase n="1" title="HD Derivation Core Infrastructure">
+        <task id="1.1" title="Install HD Key Dependencies">
+          <subtask>Add @scure/bip39@^1.4.0 to package.json</subtask>
+          <subtask>Add @noble/hashes@^1.5.0 to package.json (HKDF, PBKDF2, SHA-256)</subtask>
+          <subtask>Add @noble/curves@^1.6.0 to package.json (Ed25519 + X25519 primitives)</subtask>
+          <subtask>REMOVED: @scure/bip32 (SLIP-0010 no longer used)</subtask>
+        </task>
+        <task id="1.2" title="Implement BIP-39 Mnemonic Utilities">
+          <subtask>Create src/hd/mnemonic.ts module</subtask>
+          <subtask>Implement generateMnemonic() (12 words, 128-bit entropy)</subtask>
+          <subtask>Implement mnemonicToSeed() (PBKDF2-HMAC-SHA512, 2048 iterations)</subtask>
+          <subtask>Implement validateMnemonic()</subtask>
+        </task>
+        <task id="1.3" title="Implement HKDF Ed25519 Derivation (UPDATED)">
+          <subtask>Create src/hd/derive-ed25519.ts module</subtask>
+          <subtask>Implement deriveEd25519() with HKDF-SHA512 (uniform method)</subtask>
+          <subtask>Salt: SHA-256("ik:ed25519:root")</subtask>
+          <subtask>Info: UTF-8(path) for domain separation</subtask>
+          <subtask>Clamp Ed25519 scalar per RFC 8032</subtask>
+          <subtask>Compute Ed25519 public key via basepoint multiplication</subtask>
+        </task>
+        <task id="1.4" title="Implement HKDF X25519 Derivation">
+          <subtask>Create src/hd/derive-x25519.ts module</subtask>
+          <subtask>Implement deriveX25519() with HKDF-SHA512</subtask>
+          <subtask>Salt: SHA-256("ik:x25519:root")</subtask>
+          <subtask>Info: UTF-8(path) for domain separation</subtask>
+          <subtask>Clamp X25519 scalar</subtask>
+        </task>
+      </phase>
+      <phase n="2" title="Fingerprint and Path Utilities">
+        <task id="2.1" title="Update Fingerprint Module for Base58">
+          <subtask>Update src/header/fingerprint.ts to remove hex output</subtask>
+          <subtask>Implement fingerprintToBase58Full()</subtask>
+          <subtask>Implement fingerprintToBase58Short() with ed1-/x1- prefix</subtask>
+        </task>
+        <task id="2.2" title="Implement Path Parser and Validator">
+          <subtask>Create src/hd/path.ts module</subtask>
+          <subtask>Implement parsePath() with regex validation</subtask>
+          <subtask>Implement validatePath()</subtask>
+          <subtask>Define path constants: IDENTITY_PATH, ENCRYPTION_PATH</subtask>
+        </task>
+      </phase>
+      <phase n="3" title="Seed Encryption and Storage">
+        <task id="3.1" title="Implement Seed Encryption Utility">
+          <subtask>Create src/hd/seed-encryption.ts module</subtask>
+          <subtask>Implement encryptSeed() with Argon2id (64MB, 3 iterations) + XSalsa20-Poly1305</subtask>
+          <subtask>Implement decryptSeed()</subtask>
+        </task>
+        <task id="3.2" title="Implement Seed and Persona Storage">
+          <subtask>Create src/hd/storage.ts module</subtask>
+          <subtask>Define SeedFile and PersonaMetadata interfaces</subtask>
+          <subtask>Implement saveSeed() with atomic file operations</subtask>
+          <subtask>Implement savePersonaMetadata()</subtask>
+        </task>
+      </phase>
+      <phase n="4" title="Update Keygen Command">
+        <task id="4.1" title="Refactor Keygen for HD Dual Keys">
+          <subtask>Update src/cli/commands/keygen.ts for HD derivation</subtask>
+          <subtask>Generate BIP-39 mnemonic (12 words)</subtask>
+          <subtask>Display mnemonic with prominent warning (one-time display)</subtask>
+          <subtask>Derive both Ed25519 and X25519 keys via HD paths (HKDF)</subtask>
+          <subtask>Encrypt seed and save seed.json + persona.json</subtask>
+        </task>
+      </phase>
+      <phase n="5" title="Update PersonaManager for HD Keys">
+        <task id="5.1" title="Refactor PersonaManager for Seed-Based Derivation">
+          <subtask>Update src/cli/utils/persona-manager.ts</subtask>
+          <subtask>Load seed.json + persona.json instead of keypairs</subtask>
+          <subtask>Implement derivePersonaKeys() for on-demand derivation</subtask>
+          <subtask>Implement getIdentityKey() and getEncryptionKey()</subtask>
+        </task>
+        <task id="5.2" title="Add Backward Compatibility Check">
+          <subtask>Detect v1 (old single-key) format</subtask>
+          <subtask>Show clear error with migration instructions</subtask>
+        </task>
+      </phase>
+      <phase n="6" title="Update Encrypt/Decrypt Commands">
+        <task id="6.1" title="Update Encrypt Command for X25519 Path Lookup">
+          <subtask>Update src/cli/commands/encrypt.ts to use X25519 encryption key</subtask>
+        </task>
+        <task id="6.2" title="Update Decrypt Command for X25519 Path Lookup">
+          <subtask>Update src/cli/commands/decrypt.ts to use X25519 encryption key</subtask>
+        </task>
+      </phase>
+      <phase n="7" title="Update Fingerprint Command">
+        <task id="7.1" title="Update Fingerprint Command for Dual Keys">
+          <subtask>Update src/cli/commands/fingerprint.ts to show both fingerprints</subtask>
+          <subtask>Display identity (Ed25519) and encryption (X25519) keys</subtask>
+          <subtask>Support --json output with dual keys</subtask>
+        </task>
+      </phase>
+      <phase n="8" title="Update ASCII Armor">
+        <task id="8.1" title="Extend ASCII Armor Headers">
+          <subtask>Update src/cli/utils/armor.ts</subtask>
+          <subtask>Add Path header with full derivation path</subtask>
+          <subtask>Add RootFingerprint header referencing identity key</subtask>
+          <subtask>Update Fingerprint header to use base58 short form</subtask>
+        </task>
+      </phase>
+      <phase n="9" title="Test Vectors and KATs">
+        <task id="9.1" title="Implement Known-Answer Tests (UPDATED)">
+          <subtask>Create tests/hd/kat-vectors.test.ts</subtask>
+          <subtask>Implement Ed25519 KAT test with HKDF (seed → pubkey → fingerprint)</subtask>
+          <subtask>Implement X25519 KAT test with HKDF (seed → pubkey → fingerprint)</subtask>
+          <subtask>Verify against NEW spec vectors from hd-key-hierarchy-ik-v1.md</subtask>
+        </task>
+        <task id="9.2" title="Implement HKDF Test Vectors">
+          <subtask>Create tests/hd/hkdf-derivation.test.ts</subtask>
+          <subtask>Test HKDF salt computation for both curves</subtask>
+          <subtask>Test HKDF info encoding</subtask>
+          <subtask>Test scalar clamping for both Ed25519 and X25519</subtask>
+        </task>
+      </phase>
+      <phase n="10" title="Integration Tests">
+        <task id="10.1" title="HD Persona Workflow Integration Tests">
+          <subtask>Create tests/cli/integration/hd-persona.test.ts</subtask>
+          <subtask>Test full keygen → encrypt → decrypt workflow with HD keys</subtask>
+          <subtask>Test passphrase protection</subtask>
+        </task>
+        <task id="10.2" title="ASCII Armor Integration Tests">
+          <subtask>Test armor with Path and RootFingerprint headers</subtask>
+          <subtask>Test dearmor parsing</subtask>
+        </task>
+      </phase>
+      <phase n="11" title="Documentation Updates">
+        <task id="11.1" title="Update CLI Documentation">
+          <subtask>Update README.md with HD key features</subtask>
+          <subtask>Document mnemonic backup importance</subtask>
+        </task>
+        <task id="11.2" title="Update Architecture Documentation">
+          <subtask>Verify specs match implementation</subtask>
+          <subtask>Update ascii-armoring-spec.md with new headers</subtask>
+        </task>
+      </phase>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">BIP-39 Mnemonic Generation: identikey keygen generates 12-word BIP-39 mnemonic (128-bit entropy), displays once with warning to save securely</criterion>
+    <criterion id="2">Dual-Key Derivation: Each persona has Ed25519 identity key (ik:v1:ed25519/0/identity/0) + X25519 encryption key (ik:v1:x25519/0/encryption/0)</criterion>
+    <criterion id="3">HKDF for Ed25519 (UPDATED): Identity keys derived via HKDF-SHA512 with domain separation (salt: SHA-256("ik:ed25519:root"), info: path)</criterion>
+    <criterion id="4">HKDF for X25519: Encryption keys derived via HKDF-SHA512 with domain separation (salt: SHA-256("ik:x25519:root"), info: path)</criterion>
+    <criterion id="5">Base58 Fingerprints: All fingerprints displayed as Base58 (full or short form with prefix: ed1-, x1-)</criterion>
+    <criterion id="6">Seed Encryption: Master seed encrypted with Argon2id (64MB memory, 3 iterations) and stored in seed.json</criterion>
+    <criterion id="7">Persona Metadata: persona.json tracks current key paths, fingerprints, creation timestamps, root fingerprint</criterion>
+    <criterion id="8">Keygen Updated: identikey keygen --persona &lt;name&gt; creates seed.json + persona.json with dual keys</criterion>
+    <criterion id="9">Encrypt/Decrypt Use X25519: Commands automatically use encryption key at path ik:v1:x25519/0/encryption/0</criterion>
+    <criterion id="10">Fingerprint Command: identikey fingerprint shows both identity and encryption fingerprints with types</criterion>
+    <criterion id="11">ASCII Armor Extensions: Armor headers include Path and RootFingerprint fields</criterion>
+    <criterion id="12">Test Vectors Pass (UPDATED): Implement and pass HKDF-based KAT vectors from hd-key-hierarchy-ik-v1.md spec</criterion>
+    <criterion id="13">Backward Compatibility: Old v1 (single-key) personas gracefully detected as incompatible with clear error message</criterion>
+    <criterion id="14">All Tests Pass: Unit tests for derivation, integration tests for CLI workflows, KAT tests for spec compliance</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/architecture/ARCHITECTURE-UPDATE-2025-11-01.md</path>
+        <title>Architecture Update: HKDF-SHA512 Uniform Derivation</title>
+        <section>Decision and Rationale</section>
+        <snippet>Switched from SLIP-0010 to uniform HKDF-SHA512 for all keys. Hardware wallet compatibility impossible due to custom string paths. HKDF's info parameter designed for semantic paths (native fit). Single method simplifies implementation. Removed @scure/bip32 dependency.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture/derivation-method-comparison.md</path>
+        <title>HD Key Derivation Method Comparison</title>
+        <section>SLIP-0010 vs HKDF-SHA512 Analysis</section>
+        <snippet>HKDF wins on: simpler implementation (no chain codes), native string path support, explicit domain separation, extensibility to arbitrary curves. Both cryptographically sound. SLIP-0010 only beneficial for hardware wallets with numeric BIP-44 paths - incompatible with custom string paths anyway.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture/hd-key-hierarchy-ik-v1.md</path>
+        <title>HD Key Hierarchy Specification (ik:v1) - UPDATED</title>
+        <section>Uniform HKDF-SHA512 Derivation</section>
+        <snippet>All keys use HKDF-SHA512. Ed25519: salt=SHA-256("ik:ed25519:root"), info=path. X25519: salt=SHA-256("ik:x25519:root"), info=path. Deterministic, hardened-only, path-separated. Fingerprints: SHA-256(pubkey) → base58btc. Test vectors use HKDF (not SLIP-0010).</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture/story-2-2-hd-persona-architecture.md</path>
+        <title>Story 2.2 HD Persona Architecture - Decision Document (UPDATED)</title>
+        <section>Decision 2: HD Derivation Standards (Uniform HKDF)</section>
+        <snippet>All keys use HKDF-SHA512 (no SLIP-0010). Native support for string-based paths via info parameter. Explicit domain separation via curve-specific salts. Single implementation for all key types. Simpler than SLIP-0010 (no chain codes, no parent tracking). Extensible to arbitrary curves.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture/dual-key-persona-architecture.md</path>
+        <title>Dual-Key Persona Architecture</title>
+        <section>Rationale and HD Key Hierarchy</section>
+        <snippet>Personas require dual keys: Ed25519 signing key for identity/metadata signatures (future publishing), X25519 encryption key for current encryption operations. Cryptographic separation follows best practices. All keys derived with HKDF-SHA512 (uniform method).</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-2.md</path>
+        <title>Epic 2 Technical Specification</title>
+        <section>CLI Commands and Data Models</section>
+        <snippet>CLI commands: keygen, encrypt, decrypt, fingerprint, info, persona. Persona config structure at ~/.config/identikey/. EncryptedKeyFile format with passphrase protection (Argon2id KDF). ASCII armor format (GPG-style).</snippet>
+      </doc>
+      <doc>
+        <path>docs/stories/2-1-cli-tool-foundation.md</path>
+        <title>Story 2.1 CLI Tool Foundation</title>
+        <section>Learnings from Story 2-1</section>
+        <snippet>Fixed key generation issue (Ed25519 vs Curve25519). PersonaManager class structure established. Argon2id key encryption patterns. ASCII armor utility clean and extensible. Testing strategy: 90%+ unit coverage + integration + KATs.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/keypair.ts</path>
+        <kind>module</kind>
+        <symbol>generateKeyPair</symbol>
+        <lines>36-38</lines>
+        <reason>Current key generation uses nacl.box.keyPair() (Curve25519). Story 2.2 adds HD derivation functions for Ed25519 and X25519 (both using HKDF-SHA512) to this module.</reason>
+      </artifact>
+      <artifact>
+        <path>src/header/fingerprint.ts</path>
+        <kind>module</kind>
+        <symbol>computeFingerprint</symbol>
+        <lines>10-13</lines>
+        <reason>Currently returns Base58-encoded SHA-256. Story 2.2 needs to add fingerprintToBase58Short() with ed1-/x1- prefix and update all CLI commands to use short form.</reason>
+      </artifact>
+      <artifact>
+        <path>src/cli/utils/persona-manager.ts</path>
+        <kind>class</kind>
+        <symbol>PersonaManager</symbol>
+        <lines>29-223</lines>
+        <reason>Manages persona configurations and key storage. Story 2.2 refactors to load seed.json + persona.json and derive keys on-demand instead of storing keypairs.</reason>
+      </artifact>
+      <artifact>
+        <path>src/cli/utils/key-encryption.ts</path>
+        <kind>module</kind>
+        <symbol>encryptPrivateKey</symbol>
+        <lines>33-65</lines>
+        <reason>Current key encryption pattern using Argon2id (64MB, 3 iterations) + XSalsa20-Poly1305. Story 2.2 extends this pattern to encrypt master seed instead of individual keys.</reason>
+      </artifact>
+      <artifact>
+        <path>src/cli/commands/keygen.ts</path>
+        <kind>command</kind>
+        <symbol>registerKeygenCommand</symbol>
+        <lines>52-193</lines>
+        <reason>Current keygen generates single Curve25519 keypair. Story 2.2 updates to: generate BIP-39 mnemonic, derive dual keys (Ed25519 + X25519) via HKDF paths, encrypt seed, save new file structure.</reason>
+      </artifact>
+      <artifact>
+        <path>src/cli/utils/armor.ts</path>
+        <kind>module</kind>
+        <symbol>armor</symbol>
+        <lines>87-121</lines>
+        <reason>ASCII armor implementation with CRC24. Story 2.2 extends headers to include Path (derivation path) and RootFingerprint (persona identity key) for HD key tracking.</reason>
+      </artifact>
+      <artifact>
+        <path>src/cli/commands/encrypt.ts</path>
+        <kind>command</kind>
+        <symbol>registerEncryptCommand</symbol>
+        <lines>1-180</lines>
+        <reason>Current encrypt uses persona's encryption key. Story 2.2 updates to derive X25519 key from seed at path ik:v1:x25519/0/encryption/0 via PersonaManager.</reason>
+      </artifact>
+      <artifact>
+        <path>src/cli/commands/decrypt.ts</path>
+        <kind>command</kind>
+        <symbol>registerDecryptCommand</symbol>
+        <lines>1-150</lines>
+        <reason>Current decrypt uses persona's private key. Story 2.2 updates to derive X25519 key from seed at encryption path via PersonaManager.</reason>
+      </artifact>
+      <artifact>
+        <path>src/cli/commands/fingerprint.ts</path>
+        <kind>command</kind>
+        <symbol>registerFingerprintCommand</symbol>
+        <lines>1-100</lines>
+        <reason>Current fingerprint shows single key. Story 2.2 updates to display both identity (Ed25519) and encryption (X25519) fingerprints with type prefixes (ed1-, x1-).</reason>
+      </artifact>
+      <artifact>
+        <path>src/crypto/encryptor.ts</path>
+        <kind>module</kind>
+        <symbol>encrypt</symbol>
+        <lines>10-36</lines>
+        <reason>Core encryption using nacl.box (Curve25519 + XSalsa20-Poly1305). Story 2.2 continues using this for encryption operations with derived X25519 keys.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package name="@noble/hashes" version="^1.5.0" status="installed">HKDF-SHA512, PBKDF2, SHA-256 (already installed) - CRITICAL for all derivation</package>
+        <package name="@scure/bip39" version="^1.4.0" status="required">BIP-39 mnemonic generation (12 words, 128-bit entropy)</package>
+        <package name="@noble/curves" version="^1.6.0" status="required">Ed25519 + X25519 primitives (optional but recommended)</package>
+        <package name="@scure/bip32" version="REMOVED" status="not-needed">SLIP-0010 derivation - NO LONGER USED (architecture change)</package>
+        <package name="tweetnacl" version="^1.0.3" status="installed">Crypto operations (crypto_box, crypto_secretbox) - continue using</package>
+        <package name="bs58" version="^6.0.0" status="installed">Base58 encoding for fingerprints - continue using</package>
+        <package name="commander" version="^12.0.0" status="installed">CLI framework - continue using</package>
+        <package name="chalk" version="^5.3.0" status="installed">Terminal colors - continue using</package>
+        <package name="ora" version="^8.0.1" status="installed">Progress indicators - continue using</package>
+        <package name="cli-table3" version="^0.6.5" status="installed">Table formatting - continue using</package>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Uniform HKDF-SHA512: Use HKDF-SHA512 for ALL keys (Ed25519 and X25519). No SLIP-0010. Simpler implementation with single derivation method. Salt: SHA-256("ik:&lt;curve&gt;:root"). Info: UTF-8(path string).</constraint>
+    <constraint>NO hardware wallet compatibility: Custom string paths (`ik:v1:ed25519/0/identity/0`) incompatible with hardware wallets regardless of derivation method. HKDF natural fit for semantic paths via info parameter.</constraint>
+    <constraint>Dependencies simplified: Remove @scure/bip32 (not needed). Only need @noble/hashes for HKDF, @scure/bip39 for mnemonics, @noble/curves for primitives. Keep TweetNaCl for crypto operations.</constraint>
+    <constraint>Persona independence: Each persona has its own master seed (from BIP-39 mnemonic). No cross-persona metadata in derivation paths. Enables per-persona threat modeling.</constraint>
+    <constraint>Domain separation: Ed25519 and X25519 use different salts (SHA-256("ik:ed25519:root") vs SHA-256("ik:x25519:root")). No runtime curve conversions. Explicit separation via HKDF parameters.</constraint>
+    <constraint>Keys derived on-demand: Never store derived keys on disk. Only store encrypted seed. Keys computed from seed when needed via path-based lookup.</constraint>
+    <constraint>Base58 fingerprints only: Remove all hex fingerprint output. All CLI commands, JSON APIs, and ASCII armor use Base58 (full or short form with ed1-/x1- prefix).</constraint>
+    <constraint>Backward incompatibility: Old v1 format (id.json with single keypair) incompatible with v2 (seed.json + persona.json with HD dual keys). Detect v1 and show clear migration error.</constraint>
+    <constraint>Seed encryption: Argon2id KDF (memory=64MB, iterations=3, parallelism=1) + XSalsa20-Poly1305 cipher. Same pattern as Story 2.1 key encryption but applied to master seed.</constraint>
+    <constraint>Mnemonic display: Show 12-word mnemonic once during keygen with prominent warning to save securely. No recovery mechanism if lost (must regenerate persona).</constraint>
+    <constraint>Path structure: ik:v1:&lt;curve&gt;/&lt;account&gt;/&lt;role&gt;/&lt;index&gt;. Story 2.2 uses: account=0, role=identity/encryption, index=0. Future stories handle rotation (index&gt;0) and delegation (account&gt;0).</constraint>
+    <constraint>Testing requirements: Implement HKDF-based KAT vectors from updated spec. Verify deterministic derivation (same seed → same keys). Unit tests &gt;90% coverage. Integration tests for full CLI workflows.</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>BIP-39 Mnemonic Generation</name>
+      <kind>function</kind>
+      <signature>generateMnemonic(): string</signature>
+      <path>src/hd/mnemonic.ts (new)</path>
+      <description>Generate 12-word BIP-39 mnemonic (128-bit entropy). Returns space-separated string of 12 words from BIP-39 wordlist.</description>
+    </interface>
+    <interface>
+      <name>Mnemonic to Seed Conversion</name>
+      <kind>function</kind>
+      <signature>mnemonicToSeed(mnemonic: string): Uint8Array</signature>
+      <path>src/hd/mnemonic.ts (new)</path>
+      <description>Convert BIP-39 mnemonic to 64-byte seed via PBKDF2-HMAC-SHA512 (2048 iterations). Returns seed for HD derivation.</description>
+    </interface>
+    <interface>
+      <name>Ed25519 HKDF Derivation (UPDATED)</name>
+      <kind>function</kind>
+      <signature>deriveEd25519(seed: Uint8Array, path: string): KeyPair</signature>
+      <path>src/hd/derive-ed25519.ts (new)</path>
+      <description>Derive Ed25519 keypair via HKDF-SHA512 (NOT SLIP-0010). Salt: SHA-256("ik:ed25519:root"). Info: UTF-8(path). Clamp scalar per RFC 8032. Returns {publicKey, secretKey}.</description>
+    </interface>
+    <interface>
+      <name>X25519 HKDF Derivation</name>
+      <kind>function</kind>
+      <signature>deriveX25519(seed: Uint8Array, path: string): KeyPair</signature>
+      <path>src/hd/derive-x25519.ts (new)</path>
+      <description>Derive X25519 keypair via HKDF-SHA512. Salt: SHA-256("ik:x25519:root"). Info: UTF-8(path). Clamp X25519 scalar. Returns {publicKey, secretKey}.</description>
+    </interface>
+    <interface>
+      <name>Base58 Fingerprint (Short Form)</name>
+      <kind>function</kind>
+      <signature>fingerprintToBase58Short(fp: Uint8Array, type: 'ed25519' | 'x25519'): string</signature>
+      <path>src/header/fingerprint.ts (update)</path>
+      <description>Compute short fingerprint with type prefix. Ed25519: ed1- + base58(first 10 bytes). X25519: x1- + base58(first 10 bytes). Returns ~16-char string.</description>
+    </interface>
+    <interface>
+      <name>Seed Encryption</name>
+      <kind>function</kind>
+      <signature>encryptSeed(seed: Uint8Array, passphrase: string): EncryptedSeed</signature>
+      <path>src/hd/seed-encryption.ts (new)</path>
+      <description>Encrypt master seed with Argon2id KDF + XSalsa20-Poly1305. Returns {encryptedSeed, salt, nonce, kdf, kdfParams}.</description>
+    </interface>
+    <interface>
+      <name>Persona Metadata Storage</name>
+      <kind>interface</kind>
+      <signature>interface PersonaMetadata { version: string; name: string; created: string; rootFingerprint: string; currentKeys: { identity: KeyInfo; encryption: KeyInfo }; revokedKeys: [] }</signature>
+      <path>src/hd/storage.ts (new)</path>
+      <description>Persona metadata structure tracking current key paths, fingerprints, creation timestamps. Stored in persona.json.</description>
+    </interface>
+    <interface>
+      <name>PersonaManager HD Key Lookup</name>
+      <kind>method</kind>
+      <signature>getEncryptionKey(personaName: string, passphrase: string): KeyPair</signature>
+      <path>src/cli/utils/persona-manager.ts (update)</path>
+      <description>Derive encryption key on-demand from seed. Load seed.json, decrypt with passphrase, derive X25519 key at ik:v1:x25519/0/encryption/0 using HKDF-SHA512.</description>
+    </interface>
+    <interface>
+      <name>ASCII Armor with HD Headers</name>
+      <kind>function</kind>
+      <signature>armor(data: Uint8Array, type: ArmorType, headers: { Path?: string; RootFingerprint?: string; ... }): string</signature>
+      <path>src/cli/utils/armor.ts (update)</path>
+      <description>Extend armor() to accept optional Path (derivation path) and RootFingerprint (persona identity key) headers. Include in armored output.</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Follow Story 2.1 testing patterns: Unit tests for each utility module (mnemonic, HKDF derivation for both curves, fingerprint, path parsing, seed encryption) with &gt;90% coverage. Integration tests for full CLI workflows (keygen → encrypt → decrypt). Known-Answer Tests (KATs) for spec compliance - verify deterministic HKDF derivation matches expected vectors from updated hd-key-hierarchy-ik-v1.md (HKDF-based, not SLIP-0010). Use Bun test framework. Mock file I/O for unit tests, use temp directories for integration tests.</standards>
+    <locations>tests/hd/ (new) for HD key unit tests, tests/cli/integration/ for CLI workflow tests, src/hd/*.test.ts for co-located unit tests</locations>
+    <ideas>
+      <idea ac="1,2,3,4">Test BIP-39 mnemonic generation (12 words, valid wordlist, deterministic seed). Test HKDF Ed25519 derivation matches updated spec vectors (NO SLIP-0010). Test HKDF X25519 derivation with correct salt/info. Verify dual keys derived from same seed using HKDF uniformly.</idea>
+      <idea ac="3,4">Test HKDF uniformity: same function, different salts (SHA-256("ik:ed25519:root") vs SHA-256("ik:x25519:root")). Verify info parameter = UTF-8(path string). Test scalar clamping for both curves.</idea>
+      <idea ac="5">Test fingerprint computation: SHA-256 correctness, Base58 encoding, short form with ed1-/x1- prefix, roundtrip encoding/decoding.</idea>
+      <idea ac="6,7">Test seed encryption/decryption roundtrip with Argon2id. Test wrong passphrase fails. Test salt/nonce uniqueness. Test persona metadata JSON structure matches spec.</idea>
+      <idea ac="8">Integration test: keygen --persona test generates mnemonic, creates seed.json + persona.json, displays both fingerprints, mnemonic shown once.</idea>
+      <idea ac="9">Integration test: encrypt/decrypt roundtrip uses derived X25519 key at ik:v1:x25519/0/encryption/0 path (via HKDF).</idea>
+      <idea ac="10">Test fingerprint command shows both identity (ed1-...) and encryption (x1-...) fingerprints. Test --json output structure.</idea>
+      <idea ac="11">Test ASCII armor roundtrip with Path and RootFingerprint headers. Test dearmor parses new headers correctly.</idea>
+      <idea ac="12">Implement HKDF-based KAT test cases from updated spec: seed (hex) → Ed25519 pubkey (base58 via HKDF), X25519 pubkey (base58 via HKDF), fingerprints (short form). Verify determinism: same seed 100 times → same keys. NO SLIP-0010 vectors.</idea>
+      <idea ac="13">Test backward compatibility: detect old id.json format, show clear migration error message.</idea>
+      <idea ac="14">Run full test suite: unit tests (&gt;90% coverage), integration tests (CLI workflows), KAT tests (HKDF-based spec vectors). Target: all tests passing.</idea>
+    </ideas>
+  </tests>
+</story-context>

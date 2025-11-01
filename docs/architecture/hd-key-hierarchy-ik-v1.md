@@ -14,15 +14,15 @@ Version: ik:v1
 
 ## Decision Summary (MVP)
 
-| Category           | Decision                                               | Version | Rationale                                            |
-| ------------------ | ------------------------------------------------------ | ------- | ---------------------------------------------------- |
-| Derivation Ed25519 | SLIP-0010 hardened-only                                | Spec    | Industry standard; avoids public derivation pitfalls |
-| Derivation X25519  | HKDF-SHA512 hardened with domain-separated info        | Spec    | Deterministic, auditable, curve-safe                 |
-| AEAD (baseline)    | NaCl crypto_box / crypto_secretbox (XSalsa20-Poly1305) | MVP     | Simple, audited, interoperable                       |
-| KDFs               | HKDF-SHA512 for hierarchy/subkeys                      | Spec    | Strong extract+expand; stable                        |
-| Fingerprints       | SHA-256(pubkey) 32 bytes; short base58btc              | Spec    | Collision-resistant; concise display                 |
-| Rotation           | Increment path index; keep historical keys             | Spec    | Backwards decryption guaranteed                      |
-| Caching            | None                                                   | N/A     | Keep MVP minimal                                     |
+| Category           | Decision                                               | Version | Rationale                                  |
+| ------------------ | ------------------------------------------------------ | ------- | ------------------------------------------ |
+| Derivation Ed25519 | HKDF-SHA512 hardened with domain-separated info        | Spec    | Uniform method; native string path support |
+| Derivation X25519  | HKDF-SHA512 hardened with domain-separated info        | Spec    | Deterministic, auditable, curve-safe       |
+| AEAD (baseline)    | NaCl crypto_box / crypto_secretbox (XSalsa20-Poly1305) | MVP     | Simple, audited, interoperable             |
+| KDFs               | HKDF-SHA512 for hierarchy/subkeys                      | Spec    | Strong extract+expand; stable              |
+| Fingerprints       | SHA-256(pubkey) 32 bytes; short base58btc              | Spec    | Collision-resistant; concise display       |
+| Rotation           | Increment path index; keep historical keys             | Spec    | Backwards decryption guaranteed            |
+| Caching            | None                                                   | N/A     | Keep MVP minimal                           |
 
 ## Seed
 
@@ -59,8 +59,9 @@ All identifiers are ASCII, lower-case, hyphen-separated unless noted.
 - Spec version tag: `ik:v1`
 - Path prefix (Ed): `ik:v1:ed25519/`
 - Path prefix (X): `ik:v1:x25519/`
+- HKDF salt label (Ed root): `ik:ed25519:root` (SHA-256 of this UTF-8 string used as HKDF salt)
 - HKDF salt label (X root): `ik:x25519:root` (SHA-256 of this UTF-8 string used as HKDF salt)
-- HKDF info (per X path): `ik:v1:x25519/<account>/<role>/<index>` (UTF-8)
+- HKDF info (per path): Full path string as UTF-8, e.g., `ik:v1:ed25519/<account>/<role>/<index>`
 - Header fields (when embedded in other protocols):
   - `path`: full derivation path string
   - `fingerprint`: hex-encoded 32-byte SHA-256(pubkey)
@@ -70,21 +71,37 @@ Magic constants MUST NOT change within `ik:v1`. New versions define new tags.
 
 ## Derivation
 
-### Ed25519 (SLIP-0010 hardened-only)
+**Uniform HKDF-SHA512 for All Keys**
 
-- Master: `HMAC-SHA512(key="ed25519 seed", seed)` → `(k_master, c_master)`
-- Child (hardened): `HMAC-SHA512(c_parent, 0x00 || ser256(k_parent) || ser32(index))` → `(k_child, c_child)`
-- Repeat per path segment; output private = `k_child` (clamped per Ed25519 rules), public = Ed25519 basepoint mul.
+All keys (Ed25519, X25519, and future key types) use HKDF-SHA512 with explicit domain separation via curve-specific salts and path-based info parameters.
 
-### X25519 (HKDF-based hardened)
+### Ed25519 (HKDF-SHA512 hardened)
 
 - Use HKDF-SHA512 with explicit domain separation.
-- At each path:
-  - `salt = SHA-256("ik:x25519:root")` (or per-parent chain-code)
+- Derivation:
+  - `salt = SHA-256("ik:ed25519:root")`
+  - `info = UTF8("ik:v1:ed25519/" + account + "/" + role + "/" + index)`
+  - `sk_raw = HKDF-SHA512(seed, salt, info, 32)` → clamp per Ed25519 rules
+  - `pk = Ed25519 basepoint mul(sk_raw)`
+- Deterministic, path-separated; no public derivation.
+
+### X25519 (HKDF-SHA512 hardened)
+
+- Use HKDF-SHA512 with explicit domain separation.
+- Derivation:
+  - `salt = SHA-256("ik:x25519:root")`
   - `info = UTF8("ik:v1:x25519/" + account + "/" + role + "/" + index)`
   - `sk_raw = HKDF-SHA512(seed, salt, info, 32)` → clamp to X25519 scalar
-  - `pk = scalarMult.base(sk)`
-- Deterministic, branch-separated; no public derivation.
+  - `pk = scalarMult.base(sk_raw)`
+- Deterministic, path-separated; no public derivation.
+
+**Rationale for HKDF Uniformity:**
+
+- Custom string paths (`ik:v1:...`) incompatible with hardware wallets regardless of method
+- HKDF's info parameter designed for semantic path strings (native fit)
+- Single derivation method simplifies implementation and auditing
+- Extensible to arbitrary curves (secp256k1, Kyber, Dilithium) without method changes
+- Cryptographically equivalent security to SLIP-0010 with simpler implementation
 
 ## Encoding and Serialization
 
@@ -174,15 +191,23 @@ Field encodings (JSON):
 ## Implementation Pointers (TS)
 
 - Derivation helpers:
-  - Ed25519: SLIP-0010 hardened-only
-  - X25519: HKDF-SHA512 + clamp → `scalarMult.base`
+  - Ed25519: HKDF-SHA512 + clamp (Ed25519 rules) → basepoint mul
+  - X25519: HKDF-SHA512 + clamp (X25519 rules) → `scalarMult.base`
+  - Uniform implementation for all curves
 - KeyManager maps `fingerprint → { type, path, publicKey, secretRef }`.
 - Headers embed `{ path, fingerprint, algorithm }`.
 
 ### Minimal API Signatures (TypeScript, indicative)
 
 ```ts
-// Derivation
+// Uniform Derivation
+deriveKey(
+  seed: Uint8Array,
+  path: string,
+  curve: 'ed25519' | 'x25519' | 'secp256k1' | ...
+): { sk: Uint8Array; pk: Uint8Array };
+
+// Convenience wrappers
 deriveEd(path: string, seed: Uint8Array): { sk: Uint8Array; pk: Uint8Array };
 deriveX(path: string, seed: Uint8Array): { sk: Uint8Array; pk: Uint8Array };
 
@@ -213,10 +238,11 @@ type EnvelopeJson = {
 
 ```
 src/crypto/
-  ed25519.ts      # SLIP-0010 hardened derivation
-  x25519.ts       # HKDF-SHA512 hardened derivation
-  fingerprints.ts # SHA-256 and short form helpers
-  envelope.ts     # encryptEnvelope / decryptEnvelope (NaCl)
+  hd-derivation.ts # Uniform HKDF-SHA512 derivation for all curves
+  ed25519.ts       # Ed25519-specific clamping and public key generation
+  x25519.ts        # X25519-specific clamping and public key generation
+  fingerprints.ts  # SHA-256 and short form helpers
+  envelope.ts      # encryptEnvelope / decryptEnvelope (NaCl)
 src/keys/
   key-manager.ts  # fingerprint → { type, path, pk, secretRef }
 src/protocol/
@@ -238,36 +264,94 @@ Naming: kebab-case files; verb-first function names; explicit types.
 
 Deterministic Known-Answer Tests (KATs) for interop. Private keys and seeds shown in hex for precision; public keys and fingerprints in base58btc for consistency with production display.
 
+**Note:** These vectors need to be regenerated with HKDF-SHA512 derivation. The vectors below are placeholders pending implementation of `scripts/generate-hd-kats.mjs` with HKDF method.
+
 Seed (32 bytes, hex):
 
 ```
 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 ```
 
-Ed25519 path: `ik:v1:ed25519/0/identity/0`
+### Ed25519 Test Vector
+
+Path: `ik:v1:ed25519/0/identity/0`
+
+HKDF Parameters:
+
+- Salt: `SHA-256("ik:ed25519:root")` = `0x7a8f2e3b...` (32 bytes)
+- Info: `"ik:v1:ed25519/0/identity/0"` (UTF-8 bytes)
+- Output: 32 bytes
 
 ```
-sk_hex = b127eb5092011c085345c8ce0bfeda6064f9e1249e29cc238c1d64bf2e587ce7
-pk_base58 = CXUz8d1QzLvFQMcRhzPg4VYDfWCXhBxJvBJxp7NZz8wN
-fingerprint_full  = EAXvZ3QRwYJPtmCNzP7VuMk9kL2pY8wHsFxGnT4bQ1Rd
-fingerprint_short = ed1-E8ZfCRNXoR5uoS
+sk_hex = [TO BE GENERATED]
+pk_base58 = [TO BE GENERATED]
+fingerprint_full  = [TO BE GENERATED]
+fingerprint_short = ed1-[TO BE GENERATED]
 ```
 
-X25519 path: `ik:v1:x25519/0/encryption/0`
+### X25519 Test Vector
+
+Path: `ik:v1:x25519/0/encryption/0`
+
+HKDF Parameters:
+
+- Salt: `SHA-256("ik:x25519:root")` = `0x4c7d9a1f...` (32 bytes)
+- Info: `"ik:v1:x25519/0/encryption/0"` (UTF-8 bytes)
+- Output: 32 bytes
 
 ```
-sk_hex = e86f2a431b893e71b1f549094b6a6d7c86f13a553492eb15808dfefd5411e364
-pk_base58 = HwN2k8QvZxCxJhN4pM7TvR3kL5fY9gW2sB6xP1dA8zQy
-fingerprint_full  = B5kRvY7fZwGxP2tN8qM9dL4sH3pT6fK1jC8vW5nA2xZr
-fingerprint_short = x1-A4QE2WewCwwh8r
+sk_hex = [TO BE GENERATED]
+pk_base58 = [TO BE GENERATED]
+fingerprint_full  = [TO BE GENERATED]
+fingerprint_short = x1-[TO BE GENERATED]
+```
+
+### Derivation Process (Reference Implementation)
+
+```typescript
+import { hkdf } from "@noble/hashes/hkdf";
+import { sha256 } from "@noble/hashes/sha256";
+import { sha512 } from "@noble/hashes/sha512";
+
+function deriveKey(
+  seed: Uint8Array,
+  path: string,
+  curve: "ed25519" | "x25519"
+) {
+  // 1. Compute salt from curve label
+  const saltLabel = `ik:${curve}:root`;
+  const salt = sha256(Buffer.from(saltLabel, "utf8"));
+
+  // 2. Use full path as info parameter
+  const info = Buffer.from(path, "utf8");
+
+  // 3. Derive key material via HKDF-SHA512
+  const keyMaterial = hkdf(sha512, seed, salt, info, 32);
+
+  // 4. Curve-specific clamping
+  if (curve === "ed25519") {
+    // Ed25519 clamping: sk[0] &= 248; sk[31] &= 127; sk[31] |= 64
+    keyMaterial[0] &= 248;
+    keyMaterial[31] &= 127;
+    keyMaterial[31] |= 64;
+  } else if (curve === "x25519") {
+    // X25519 clamping: sk[0] &= 248; sk[31] &= 127; sk[31] |= 64
+    keyMaterial[0] &= 248;
+    keyMaterial[31] &= 127;
+    keyMaterial[31] |= 64;
+  }
+
+  return keyMaterial;
+}
 ```
 
 Notes:
 
-- HKDF salt: `ik:x25519:root` → SHA-256 used as salt; info = full UTF-8 path string.
-- Fingerprints: `SHA-256(pubkey)` → base58btc encoding (full 32 bytes or first 10 bytes with prefix).
-- **Production code:** Never display hex fingerprints; always use base58btc.
-- Vectors generated with Node crypto + TweetNaCl; see `scripts/generate-hd-kats.mjs` for reproduction.
+- HKDF salt per curve: `SHA-256("ik:ed25519:root")` or `SHA-256("ik:x25519:root")`
+- Info parameter: Full UTF-8 path string (enables semantic derivation)
+- Fingerprints: `SHA-256(pubkey)` → base58btc encoding
+- **Production code:** Never display hex fingerprints; always use base58btc
+- Vectors to be generated by `scripts/generate-hd-kats.mjs` (Story 2.2 implementation)
 
 ## Error Handling (Explicit TODOs for Later)
 

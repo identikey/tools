@@ -43,7 +43,7 @@ development_status:
 
   epic-2: contexted
   2-1-cli-tool-foundation: done
-  2-2-dual-key-persona-architecture: backlog
+  2-2-dual-key-persona-architecture: ready-for-dev
   2-3-basic-example-app: backlog
   2-4-complex-example-app: backlog
   epic-2-retrospective: optional
