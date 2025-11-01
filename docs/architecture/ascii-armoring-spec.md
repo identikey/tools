@@ -88,7 +88,7 @@ Created: <iso8601_timestamp>
 | ------------- | -------- | -------------------------------------------------------------- |
 | `Version`     | Yes      | Armor format version (currently `1`)                           |
 | `KeyType`     | Yes      | `Ed25519` (signing/verification) or `X25519` (encryption/ECDH) |
-| `Fingerprint` | Yes      | SHA-256 hash of public key bytes, hex-encoded                  |
+| `Fingerprint` | Yes      | SHA-256 hash of public key bytes, Base58-encoded (~44 chars)   |
 | `Created`     | No       | ISO 8601 timestamp when key was generated                      |
 | `Comment`     | No       | Human-readable label (e.g., "Alice's work key")                |
 
@@ -98,7 +98,7 @@ Created: <iso8601_timestamp>
 ----- BEGIN IDENTIKEY PUBLIC KEY -----
 Version: 1
 KeyType: Ed25519
-Fingerprint: a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890
+Fingerprint: GKz7nr9MkFExSsqP8B8kH5LcXKRAU5sUBxQJKcHzkQ2z
 Created: 2025-10-31T14:23:45Z
 Comment: Alice's primary signing key
 
@@ -136,15 +136,15 @@ Nonce: <base64_nonce>
 
 ### Headers
 
-| Header        | Required | Description                                                    |
-| ------------- | -------- | -------------------------------------------------------------- |
-| `Version`     | Yes      | Armor format version (currently `1`)                           |
-| `KeyType`     | Yes      | `Ed25519` (signing/verification) or `X25519` (encryption/ECDH) |
-| `Fingerprint` | Yes      | SHA-256 hash of corresponding public key                       |
-| `Encrypted`   | Yes      | Encryption algorithm (e.g., `XSalsa20-Poly1305`)               |
-| `Salt`        | Yes      | Base64-encoded salt for passphrase KDF (16 bytes)              |
-| `Nonce`       | Yes      | Base64-encoded encryption nonce (24 bytes)                     |
-| `Comment`     | No       | Human-readable label                                           |
+| Header        | Required | Description                                                       |
+| ------------- | -------- | ----------------------------------------------------------------- |
+| `Version`     | Yes      | Armor format version (currently `1`)                              |
+| `KeyType`     | Yes      | `Ed25519` (signing/verification) or `X25519` (encryption/ECDH)    |
+| `Fingerprint` | Yes      | SHA-256 hash of corresponding public key, Base58-encoded (~44 ch) |
+| `Encrypted`   | Yes      | Encryption algorithm (e.g., `XSalsa20-Poly1305`)                  |
+| `Salt`        | Yes      | Base64-encoded salt for passphrase KDF (16 bytes)                 |
+| `Nonce`       | Yes      | Base64-encoded encryption nonce (24 bytes)                        |
+| `Comment`     | No       | Human-readable label                                              |
 
 ### Example
 
@@ -152,7 +152,7 @@ Nonce: <base64_nonce>
 ----- BEGIN IDENTIKEY PRIVATE KEY -----
 Version: 1
 KeyType: Ed25519
-Fingerprint: a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890
+Fingerprint: GKz7nr9MkFExSsqP8B8kH5LcXKRAU5sUBxQJKcHzkQ2z
 Encrypted: XSalsa20-Poly1305
 Salt: rK8vL3xM9gH7sF6jP2aY1eU=
 Nonce: c5hN2iT9xV4zW7yQ3mG6lO1rE8fD9kH=
@@ -815,7 +815,7 @@ Comment: Production signing key
 ----- BEGIN IDENTIKEY PRIVATE KEY -----
 Version: 1
 KeyType: X25519
-Fingerprint: e5f67890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12
+Fingerprint: FnXv3YhC8dREmpTsE9skJ6MdYLSBV6tVCyRKLdI2lR3A
 Encrypted: false
 Warning: UNENCRYPTED - INSECURE STORAGE
 Comment: Convenience key for dev environment

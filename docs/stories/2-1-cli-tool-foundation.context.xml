@@ -1,0 +1,304 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>1</storyId>
+    <title>CLI Tool Foundation</title>
+    <status>drafted</status>
+    <generatedAt>2025-10-31</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/2-1-cli-tool-foundation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>developer integrating IdentiKey Tools</asA>
+    <iWant>a production-ready CLI tool with 6 commands (keygen, encrypt, decrypt, fingerprint, info, persona) supporting persona-based key management, ASCII armoring, and stdin/stdout piping</iWant>
+    <soThat>I can quickly test encryption workflows, manage multiple key personas, and integrate the library into scripts without writing custom code</soThat>
+    <tasks>
+### Phase 1: Project Setup and CLI Scaffolding (AC: 1)
+- Task 1.1: Install Commander.js, Chalk, Ora, CLI-Table3 dependencies
+- Task 1.2: Create CLI entry point and command router
+
+### Phase 2: Persona Management System (AC: 3, 4, 7)
+- Task 2.1: Implement PersonaManager utility
+- Task 2.2: Implement passphrase-based key encryption
+
+### Phase 3: ASCII Armoring (AC: 5)
+- Task 3.1: Implement ASCII armor utility
+
+### Phase 4: Keygen Command (AC: 3, 4, 5)
+- Task 4.1: Implement keygen command
+
+### Phase 5: Persona Command (AC: 4)
+- Task 5.1: Implement persona command
+
+### Phase 6: Fingerprint Command (AC: 8)
+- Task 6.1: Implement fingerprint command
+
+### Phase 7: Encrypt Command (AC: 5, 6, 7, 9)
+- Task 7.1: Implement encrypt command
+- Task 7.2: Implement file I/O utilities
+
+### Phase 8: Decrypt Command (AC: 5, 6, 10)
+- Task 8.1: Implement decrypt command
+
+### Phase 9: Info Command (AC: 8)
+- Task 9.1: Implement info command
+
+### Phase 10: Error Handling and Output Formatting (AC: 10)
+- Task 10.1: Implement error messages and output utilities
+
+### Phase 11: Testing and CI Integration (AC: 11)
+- Task 11.1: Unit tests for all commands
+- Task 11.2: Integration tests for workflows
+- Task 11.3: Update CI pipeline
+</tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. CLI Installable: `bun install -g @identikey/tools` makes `identikey` command available globally
+2. 6 Commands Functional: keygen, encrypt, decrypt, fingerprint, info, persona all execute successfully
+3. Default Persona Storage: `identikey keygen` creates encrypted key at `~/.config/identikey/personas/default/id.json` (like Solana CLI)
+4. Persona Switching: `identikey persona work` switches active persona, subsequent commands use work persona keys automatically
+5. ASCII Armor Support: `identikey encrypt -a` outputs text-safe ASCII-armored ciphertext, `identikey decrypt` auto-detects and handles armored input
+6. Stdin/Stdout Piping: `cat file | identikey encrypt --key pub.pem | identikey decrypt --key priv.pem` roundtrips correctly
+7. Persona-Based Encryption: `identikey encrypt < secret.txt` uses active persona pubkey without --key flag
+8. JSON Output: `identikey info blob.enc --json` outputs valid JSON (parseable by `jq`)
+9. Progress Indicators: Encrypting 50MB file shows progress bar with percentage
+10. Error Messages Clear: Missing --key flag shows "Error: --key required or use active persona. Run 'identikey keygen' first."
+11. All tests pass: Unit tests for each command + integration tests for piping + persona workflows
+</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec-epic-2.md</path>
+        <title>Epic Technical Specification: Developer Tools & Examples</title>
+        <section>Complete Technical Specification</section>
+        <snippet>Comprehensive spec for Epic 2 covering CLI commands (keygen, encrypt, decrypt, fingerprint, info, persona), persona-based key management, ASCII armoring, stdin/stdout piping, and JSON output. Includes data models, API interfaces, workflows, acceptance criteria, and test strategy.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics-cli-examples.md</path>
+        <title>IdentiKey Tools - Epic Breakdown: CLI & Developer Examples</title>
+        <section>Story Map and Implementation Sequence</section>
+        <snippet>Epic breakdown showing 3 stories with Story 1 (CLI Tool Foundation) estimated at 3 points over days 1-3. Includes success criteria, dependencies, and risk mitigation for CLI development.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture/ascii-armoring-spec.md</path>
+        <title>ASCII Armoring Specification for IdentiKey Tools</title>
+        <section>Complete Format Specification</section>
+        <snippet>Defines ASCII armor formats for cryptographic artifacts (public/private keys use Base58 with no wrapping, messages use Base64 with 64-char wrapping). Includes CRC24 checksum (polynomial 0x864CFB), headers (Version, KeyType/RecipientFingerprint), and delimiters (BEGIN/END IDENTIKEY). Auto-detection via prefix check.</snippet>
+      </doc>
+      <doc>
+        <path>docs/testing-strategy.md</path>
+        <title>Testing Strategy</title>
+        <section>Test Pyramid: Unit → Integration → E2E</section>
+        <snippet>Three-tier test strategy using MemoryAdapter for fast unit tests (>90 coverage), FilesystemAdapter for integration tests (offline I/O), and MinioAdapter for E2E tests (network-dependent, CI only). Unit tests target <2s runtime with 90+ test coverage.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec.md</path>
+        <title>IdentiKey Tools - Technical Specification (Core Library)</title>
+        <section>Core API and Encryption Flow</section>
+        <snippet>Documents content-addressable encrypted storage pattern, EncryptedStorage API (put/get), encryption flow (plaintext → encrypt → CBOR header → hash → store), key fingerprinting (SHA-256), and CBOR metadata schema.</snippet>
+      </doc>
+      <doc>
+        <path>docs/stories/1-3-testing-and-deployment.md</path>
+        <title>Story 1-3: Testing and Deployment</title>
+        <section>Learnings and Implementation Patterns</section>
+        <snippet>Completed story with CI/CD patterns (.github/workflows/ci.yml multi-job structure), test organization (unit/integration/E2E layers), documentation patterns, and review findings (coverage enforcement, ESM imports only, performance benchmarks in CI).</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/keypair.ts</path>
+        <kind>module</kind>
+        <symbol>generateKeyPair</symbol>
+        <lines>36-38</lines>
+        <reason>Core function for generating Ed25519 keypairs, will be used by CLI keygen command</reason>
+      </artifact>
+      <artifact>
+        <path>src/keypair.ts</path>
+        <kind>class</kind>
+        <symbol>KeyManager</symbol>
+        <lines>49-78</lines>
+        <reason>Manages keypair storage and retrieval by fingerprint, pattern for persona management utility</reason>
+      </artifact>
+      <artifact>
+        <path>src/header/fingerprint.ts</path>
+        <kind>module</kind>
+        <symbol>computeFingerprint</symbol>
+        <lines>1-20</lines>
+        <reason>Computes SHA-256 hash of public key for CLI fingerprint command</reason>
+      </artifact>
+      <artifact>
+        <path>src/header/parse.ts</path>
+        <kind>module</kind>
+        <symbol>parseHeader</symbol>
+        <lines>1-50</lines>
+        <reason>Parses CBOR header from encrypted blob for CLI info command</reason>
+      </artifact>
+      <artifact>
+        <path>src/api/encrypted-storage.ts</path>
+        <kind>class</kind>
+        <symbol>EncryptedStorage</symbol>
+        <lines>14-126</lines>
+        <reason>Main encryption/decryption API consumed by CLI encrypt and decrypt commands</reason>
+      </artifact>
+      <artifact>
+        <path>src/crypto/encryptor.ts</path>
+        <kind>module</kind>
+        <symbol>encrypt</symbol>
+        <lines>1-30</lines>
+        <reason>TweetNaCl encryption wrapper used internally by EncryptedStorage</reason>
+      </artifact>
+      <artifact>
+        <path>src/crypto/decryptor.ts</path>
+        <kind>module</kind>
+        <symbol>decrypt</symbol>
+        <lines>1-30</lines>
+        <reason>TweetNaCl decryption wrapper used internally by EncryptedStorage</reason>
+      </artifact>
+      <artifact>
+        <path>src/header/schema.ts</path>
+        <kind>module</kind>
+        <symbol>BlobMetadataSchema</symbol>
+        <lines>1-40</lines>
+        <reason>Zod schema for blob metadata validation, reference for CLI info output format</reason>
+      </artifact>
+      <artifact>
+        <path>package.json</path>
+        <kind>config</kind>
+        <symbol>scripts</symbol>
+        <lines>19-30</lines>
+        <reason>Existing test scripts (test, test:unit, test:e2e) to extend with test:cli</reason>
+      </artifact>
+      <artifact>
+        <path>package.json</path>
+        <kind>config</kind>
+        <symbol>dependencies</symbol>
+        <lines>36-43</lines>
+        <reason>Current dependencies (tweetnacl, cbor, bs58, minio, zod) available for CLI to use</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <npm>
+        <package name="tweetnacl" version="^1.0.3">Core crypto primitives</package>
+        <package name="cbor" version="^10.0.11">Metadata encoding</package>
+        <package name="bs58" version="^6.0.0">Base58 encoding for fingerprints and armor</package>
+        <package name="minio" version="^8.0.6">Storage backend for examples</package>
+        <package name="zod" version="^4.1.12">Schema validation</package>
+        <package name="commander" version="^12.0.0" status="new">CLI framework for command routing and argument parsing</package>
+        <package name="chalk" version="^5.3.0" status="new">Terminal colors for output formatting</package>
+        <package name="ora" version="^8.0.1" status="new">Progress indicators and spinners for large file operations</package>
+        <package name="cli-table3" version="^0.6.5" status="new">Table formatting for persona list and info commands</package>
+      </npm>
+      <runtime>
+        <requirement name="Bun" version=">=1.0">Runtime environment for tests and CLI execution</requirement>
+        <requirement name="Node.js" version=">=20">Alternative runtime with ESM support</requirement>
+      </runtime>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>CLI must be pure consumer layer - no new crypto primitives, only wrap existing core library APIs</constraint>
+    <constraint>Use existing encryption library from Epic 1: EncryptedStorage, generateKeyPair, fingerprint, parseHeader</constraint>
+    <constraint>ASCII armor format per docs/architecture/ascii-armoring-spec.md: Base58 for keys (no wrapping), Base64 for messages (64-char wrapping), CRC24 checksum (polynomial 0x864CFB)</constraint>
+    <constraint>Default persona storage at ~/.config/identikey/personas/{name}/id.json (like Solana CLI)</constraint>
+    <constraint>Private keys must be encrypted at rest with passphrase using Argon2id KDF (64MB memory, 3 iterations, parallelism=1)</constraint>
+    <constraint>All CLI commands must support stdin/stdout piping for Unix-style composition</constraint>
+    <constraint>TypeScript strict mode must pass (tsc --noEmit)</constraint>
+    <constraint>Test coverage threshold: 90% minimum for src/cli/ directory</constraint>
+    <constraint>ESM imports only (no require()), consistent with existing codebase</constraint>
+    <constraint>Cross-platform support: macOS, Linux, Windows (via WSL)</constraint>
+    <constraint>File permissions: Private key files must be set to 0600 (owner-only read/write) on Unix systems</constraint>
+    <constraint>Error messages must be actionable and never echo plaintext or keys</constraint>
+    <constraint>Must use MemoryAdapter for unit tests (fast, deterministic, no I/O)</constraint>
+    <constraint>Package.json bin field must point to dist/cli/index.js (built output)</constraint>
+    <constraint>Atomic config file writes (write to temp, rename) to prevent corruption</constraint>
+  </constraints>
+  
+  <interfaces>
+    <interface>
+      <name>EncryptedStorage</name>
+      <kind>class</kind>
+      <signature>class EncryptedStorage { constructor(storage: StorageAdapter, keyManager: KeyManager); async put(plaintext: Buffer, publicKey: Uint8Array, metadata?: Partial&lt;BlobMetadata&gt;): Promise&lt;string&gt;; async get(contentHash: string, privateKey?: Uint8Array): Promise&lt;Buffer&gt;; async getMetadata(contentHash: string): Promise&lt;BlobMetadata&gt;; }</signature>
+      <path>src/api/encrypted-storage.ts</path>
+      <usage>Main API for CLI encrypt and decrypt commands</usage>
+    </interface>
+    <interface>
+      <name>generateKeyPair</name>
+      <kind>function</kind>
+      <signature>function generateKeyPair(): KeyPair { publicKey: Uint8Array; secretKey: Uint8Array }</signature>
+      <path>src/keypair.ts</path>
+      <usage>Used by CLI keygen command to generate Ed25519 keypairs</usage>
+    </interface>
+    <interface>
+      <name>computeFingerprint</name>
+      <kind>function</kind>
+      <signature>function computeFingerprint(publicKey: Uint8Array): string</signature>
+      <path>src/header/fingerprint.ts</path>
+      <usage>Used by CLI fingerprint command and persona management for key identification</usage>
+    </interface>
+    <interface>
+      <name>parseHeader</name>
+      <kind>function</kind>
+      <signature>function parseHeader(buffer: Buffer): { header: BlobHeader; ciphertextOffset: number }</signature>
+      <path>src/header/parse.ts</path>
+      <usage>Used by CLI info command to extract metadata without decryption</usage>
+    </interface>
+    <interface>
+      <name>PersonaManager (to be created)</name>
+      <kind>class</kind>
+      <signature>class PersonaManager { constructor(configDir: string); listPersonas(): PersonaConfig[]; getActivePersona(): PersonaConfig; setActivePersona(name: string): void; createPersona(name: string, keyPath: string): void; getPersonaKeyPath(name?: string): string; }</signature>
+      <path>src/cli/utils/persona-manager.ts</path>
+      <usage>Manages persona config at ~/.config/identikey/config.json, similar to AWS CLI profiles</usage>
+    </interface>
+    <interface>
+      <name>armor/dearmor (to be created)</name>
+      <kind>function</kind>
+      <signature>function armor(data: Buffer, type: 'ENCRYPTED MESSAGE' | 'PUBLIC KEY' | 'PRIVATE KEY'): string; function dearmor(armoredText: string): { data: Buffer; type: string }; function isArmored(input: Buffer | string): boolean;</signature>
+      <path>src/cli/utils/armor.ts</path>
+      <usage>ASCII armor/dearmor per docs/architecture/ascii-armoring-spec.md, auto-detection on decrypt</usage>
+    </interface>
+    <interface>
+      <name>Commander.js program</name>
+      <kind>external</kind>
+      <signature>program.command(name).description(desc).option(flags, desc).action(handler)</signature>
+      <path>commander (npm)</path>
+      <usage>CLI framework for routing commands (keygen, encrypt, decrypt, fingerprint, info, persona)</usage>
+    </interface>
+  </interfaces>
+  
+  <tests>
+    <standards>Three-tier test pyramid: Unit tests (MemoryAdapter, fast, &gt;90% coverage, &lt;2s runtime) → Integration tests (FilesystemAdapter, real I/O, offline) → E2E tests (MinioAdapter, CI only, network-dependent). Use bun:test framework. Mock file I/O for unit tests using test fixtures. Follow Given-When-Then format. Test coverage target: &gt;90% for src/cli/. All tests must pass offline (E2E tests skip if MINIO_ENDPOINT not set).</standards>
+    <locations>
+      <location>src/cli/**/*.test.ts</location>
+      <location>tests/cli/commands/</location>
+      <location>tests/cli/integration/</location>
+    </locations>
+    <ideas>
+      <test ac="1" priority="P0">Unit: Install globally (bun install -g .), verify `which identikey` returns path</test>
+      <test ac="2" priority="P0">Unit: Each command responds to --help flag with usage information</test>
+      <test ac="3" priority="P0">Integration: keygen creates ~/.config/identikey/personas/default/id.json with encrypted key</test>
+      <test ac="3" priority="P1">Unit: Encrypted key file has correct JSON structure (version, publicKey, privateKey, salt, nonce, fingerprint)</test>
+      <test ac="4" priority="P0">Integration: persona switch updates config.json activePersona, subsequent commands use new persona</test>
+      <test ac="4" priority="P1">Unit: persona list displays all personas with active marker</test>
+      <test ac="5" priority="P0">Unit: armor/dearmor roundtrip for all types (keys, messages), CRC24 validation</test>
+      <test ac="5" priority="P0">Integration: encrypt -a | decrypt auto-detects armor, plaintext matches</test>
+      <test ac="6" priority="P0">Integration: echo "test" | identikey encrypt --key pub.pem | identikey decrypt --key priv.pem</test>
+      <test ac="6" priority="P1">Integration: Large file (10MB) piping works without buffering issues</test>
+      <test ac="7" priority="P0">Integration: encrypt without --key uses active persona pubkey automatically</test>
+      <test ac="8" priority="P0">Unit: info --json output is valid JSON parseable by jq</test>
+      <test ac="8" priority="P1">Unit: info displays metadata (version, fingerprint, timestamp) in human-readable table</test>
+      <test ac="9" priority="P1">Manual: Encrypt 50MB file, verify progress bar shows percentage updates</test>
+      <test ac="10" priority="P0">Unit: Missing --key with no persona shows exact error: "Error: --key required or use active persona. Run 'identikey keygen' first."</test>
+      <test ac="10" priority="P1">Unit: File not found shows: "Error: File not found: {path}. Check the path and try again."</test>
+      <test ac="11" priority="P0">CI: All unit tests + integration tests pass in GitHub Actions</test>
+      <test ac="11" priority="P0">Coverage: bun test --coverage shows &gt;90% for src/cli/</test>
+      <test priority="P1">Security: Private key file permissions are 0600 after keygen on Unix</test>
+      <test priority="P1">Edge case: Binary data stdin/stdout handling (not string corruption)</test>
+      <test priority="P2">Cross-platform: CLI works on macOS, Linux, Windows WSL (shebang compatibility)</test>
+      <test priority="P2">Fault injection: Wrong passphrase for encrypted key shows clear error</test>
+    </ideas>
+  </tests>
+</story-context>
+

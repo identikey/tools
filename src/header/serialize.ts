@@ -1,4 +1,5 @@
-import { encode } from "cbor";
+import cbor from "cbor";
+const { encode } = cbor;
 import type { BlobMetadata } from "./schema.js";
 
 const METADATA_SIZE_LIMIT = 64 * 1024; // 64KB

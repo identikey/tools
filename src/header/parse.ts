@@ -1,4 +1,5 @@
-import { decode } from "cbor";
+import cbor from "cbor";
+const { decode } = cbor;
 import { BlobHeaderSchema } from "./schema.js";
 import type { BlobHeader } from "./schema.js";
 
