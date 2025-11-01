@@ -34,7 +34,7 @@ export function fromBase58(str: string): Uint8Array {
 }
 
 export function generateKeyPair(): KeyPair {
-  return nacl.sign.keyPair();
+  return nacl.box.keyPair();
 }
 
 /**

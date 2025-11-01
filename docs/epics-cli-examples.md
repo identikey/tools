@@ -42,39 +42,83 @@
 
 ```
 Epic: Developer Tools & Examples
-├── Story 1: CLI Tool Foundation (3 points) - Days 1-3
-│   └── 5 commands + stdin/stdout + progress + JSON output
-├── Story 2: Basic Example App (2 points) - Day 4
+├── Story 1: CLI Tool Foundation (3 points) - Days 1-3 ✅
+│   └── 6 commands + stdin/stdout + progress + JSON output + persona mgmt
+├── Story 2: Dual-Key Persona Architecture (5 points) - Days 4-6
+│   └── Ed25519 signing + Curve25519 encryption + persona identity + migration
+├── Story 3: Basic Example App (2 points) - Day 7
 │   └── Simple keypair generation demo
-└── Story 3: Complex Example App (3 points) - Days 5-6
+└── Story 4: Complex Example App (3 points) - Days 8-9
     └── Full workflow: encrypt → store → retrieve → decrypt
 ```
 
-**Total Story Points:** 8 points
-**Estimated Timeline:** 1-1.5 weeks
+**Total Story Points:** 13 points
+**Estimated Timeline:** 1.5-2 weeks
 
 ### Story Summaries
 
 #### Story 1: CLI Tool Foundation
 
-**Points:** 3 | **Status:** Draft | **File:** `story-cli-examples-1.md`
+**Points:** 3 | **Status:** Done | **File:** `2-1-cli-tool-foundation.md`
 
-Build the built-in CLI tool that ships with identikey-tools package. Implements 5 commands (keygen, encrypt, decrypt, fingerprint, info) with Unix-friendly stdin/stdout support, progress indicators, and JSON output mode for scripting.
+Build the built-in CLI tool that ships with identikey-tools package. Implements 6 commands (keygen, encrypt, decrypt, fingerprint, info, persona) with Unix-friendly stdin/stdout support, progress indicators, and JSON output mode for scripting.
 
 **Key Deliverables:**
 
-- Commander.js-based CLI with 5 commands
-- Stdin/stdout piping support
-- Progress indicators for large files
-- JSON output mode (`--json` flag)
-- Clear error messages with actionable hints
-- Unit tests for each command
+- ✅ Commander.js-based CLI with 6 commands
+- ✅ Stdin/stdout piping support
+- ✅ Progress indicators for large files
+- ✅ JSON output mode (`--json` flag)
+- ✅ Clear error messages with actionable hints
+- ✅ Persona management with passphrase encryption
+- ✅ ASCII armoring support
+- ✅ Unit tests for each command
+
+**Current State:**
+
+- Uses Curve25519 encryption keys
+- Signing capability deferred to Story 2
 
 ---
 
-#### Story 2: Basic Example App
+#### Story 2: Dual-Key Persona Architecture
 
-**Points:** 2 | **Status:** Draft | **File:** `story-cli-examples-2.md`
+**Points:** 5 | **Status:** Planned | **File:** `2-2-dual-key-persona-architecture.md`
+
+Implement dual-key persona architecture where each persona has separate Ed25519 signing keys (for persona identity) and Curve25519 encryption keys (for encryption operations). This enables persona publishing, identity verification, and proper cryptographic separation of concerns.
+
+**Key Deliverables:**
+
+- Ed25519 signing keypair generation
+- Curve25519 encryption keypair generation (already implemented)
+- Dual-key encrypted file format (v2)
+- Update keygen to generate both key types
+- Update all commands to use appropriate key type
+- Implement `sign` and `verify` commands
+- Persona manifest format specification
+- Migration strategy from v1 (single-key) to v2 (dual-key)
+- Update all tests for dual-key format
+- Backward compatibility handling
+
+**Architecture Reference:**
+
+- See `docs/architecture/dual-key-persona-architecture.md`
+
+**Dependencies:**
+
+- Story 1 (CLI Tool Foundation) must be complete
+
+**Breaking Changes:**
+
+- Key file format changes from v1 to v2
+- Users must regenerate keys
+- Clear migration documentation required
+
+---
+
+#### Story 3: Basic Example App
+
+**Points:** 2 | **Status:** Draft | **File:** `2-3-basic-example-app.md`
 
 Create minimal example demonstrating keypair generation with zero external dependencies. Runs in < 1 second, shows developers how to import and use the library for basic operations.
 
@@ -87,9 +131,9 @@ Create minimal example demonstrating keypair generation with zero external depen
 
 ---
 
-#### Story 3: Complex Example App
+#### Story 4: Complex Example App
 
-**Points:** 3 | **Status:** Draft | **File:** `story-cli-examples-3.md`
+**Points:** 3 | **Status:** Draft | **File:** `2-4-complex-example-app.md`
 
 Create comprehensive example demonstrating production patterns: full encryption workflow, batch operations, and key rotation. Includes MinIO integration, performance metrics, and detailed README.
 

@@ -11,13 +11,13 @@ import {
 
 describe("keypair", () => {
   describe("generateKeyPair", () => {
-    it("generates a valid ED25519 keypair", () => {
+    it("generates a valid Curve25519 keypair", () => {
       const kp = generateKeyPair();
 
       expect(kp.publicKey).toBeInstanceOf(Uint8Array);
       expect(kp.secretKey).toBeInstanceOf(Uint8Array);
       expect(kp.publicKey.length).toBe(32);
-      expect(kp.secretKey.length).toBe(64);
+      expect(kp.secretKey.length).toBe(32);
     });
 
     it("generates unique keys on each call", () => {
