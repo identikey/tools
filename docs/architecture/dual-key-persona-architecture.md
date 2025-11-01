@@ -9,7 +9,7 @@
 Personas must support dual-key architecture where each persona has two separate cryptographic keys for different purposes:
 
 1. **Signing Key (Ed25519)** - Root/primary persona identity key
-2. **Encryption Key (Curve25519)** - Attached key for encryption operations
+2. **Encryption Key (X25519)** - Attached key for encryption operations
 
 ## Rationale
 
@@ -22,11 +22,12 @@ Personas must support dual-key architecture where each persona has two separate 
   - Establishing trust chains
   - Publishing to distributed identity systems
 
-### Why Curve25519 for Encryption?
+### Why X25519 for Encryption?
 
-- **Encryption Operations:** Current IdentiKey encryption uses Curve25519 (via TweetNaCl `nacl.box`)
+- **Encryption Operations:** Current IdentiKey encryption uses X25519 (Diffie-Hellman using Curve25519, via TweetNaCl `nacl.box`)
 - **Separation of Concerns:** Signing and encryption should use different keys (cryptographic best practice)
 - **Key Specialization:** Each key type optimized for its purpose
+- **Standard Terminology:** X25519 refers to the DH function, Curve25519 refers to the underlying elliptic curve
 
 ## Current State (Story 2-1)
 
@@ -43,67 +44,110 @@ Personas must support dual-key architecture where each persona has two separate 
 - ❌ No signing capability (personas cannot sign identity metadata)
 - ❌ Cannot publish persona identity (requires signing key)
 - ❌ Single key does dual-duty (not best practice)
+- ❌ No hierarchical deterministic (HD) key derivation
 
 ## Proposed Architecture
 
-### Key File Format (v2)
+### Hierarchical Deterministic (HD) Key Derivation
+
+Personas use HD key derivation from a master seed (BIP-39 mnemonic). Each persona has an independent seed, ensuring complete separation between personas.
+
+**Architecture:** Sibling derivation (Option B)
+
+- All keys derived independently from same seed
+- Root Ed25519 key is semantic identity root (not cryptographic parent)
+- Domain separation via distinct derivation paths
+
+**Derivation Paths:**
+
+```
+ik:v1:ed25519/0/identity/0    - Persona identity root (signing)
+ik:v1:x25519/0/encryption/0   - Primary encryption key
+```
+
+**Key Properties:**
+
+- Personas are independent seeds (no cross-persona metadata leakage)
+- Keys can be rotated independently (increment index)
+- ASCII armored keys reference root fingerprint
+- Root key signs persona identity metadata
+
+### Storage Format (v2)
+
+**Seed Storage:** `~/.config/identikey/personas/<name>/seed.json`
 
 ```json
 {
-  "version": 2,
-
-  "signing": {
-    "publicKey": "<base58>",
-    "privateKey": "<encrypted-base64>",
-    "fingerprint": "<base58-sha256>",
-    "salt": "<base64-16-bytes>",
-    "nonce": "<base64-24-bytes>",
-    "algorithm": "Ed25519"
-  },
-
-  "encryption": {
-    "publicKey": "<base58>",
-    "privateKey": "<encrypted-base64>",
-    "fingerprint": "<base58-sha256>",
-    "salt": "<base64-16-bytes>",
-    "nonce": "<base64-24-bytes>",
-    "algorithm": "Curve25519"
-  },
-
-  "metadata": {
-    "created": "2025-11-01T00:00:00Z",
-    "personaName": "default",
-    "primaryFingerprint": "<signing-fingerprint>"
+  "version": "ik:v1",
+  "encryptedSeed": "<base64>",
+  "salt": "<base64-16-bytes>",
+  "nonce": "<base64-24-bytes>",
+  "kdf": "argon2id",
+  "kdfParams": {
+    "memory": 65536,
+    "iterations": 3,
+    "parallelism": 1
   }
 }
 ```
 
-### Key Generation Flow
+**Persona Metadata:** `~/.config/identikey/personas/<name>/persona.json`
+
+```json
+{
+  "version": "ik:v1",
+  "name": "default",
+  "created": "2025-11-01T00:00:00Z",
+  "rootFingerprint": "ed1-E8ZfCRNXoR5uoS",
+  "currentKeys": {
+    "identity": {
+      "path": "ik:v1:ed25519/0/identity/0",
+      "fingerprint": "ed1-E8ZfCRNXoR5uoS",
+      "created": "2025-11-01T00:00:00Z"
+    },
+    "encryption": {
+      "path": "ik:v1:x25519/0/encryption/0",
+      "fingerprint": "x1-A4QE2WewCwwh8r",
+      "created": "2025-11-01T00:00:00Z"
+    }
+  },
+  "revokedKeys": []
+}
+```
+
+### Key Generation Flow (HD)
 
 ```typescript
-// 1. Generate signing keypair (Ed25519 - persona root)
-const signingKeypair = nacl.sign.keyPair();
-const signingFingerprint = computeFingerprint(signingKeypair.publicKey);
+// 1. Generate or import BIP-39 mnemonic (12 words)
+const mnemonic = generateMnemonic(128); // 12 words = 128 bit entropy
+const seed = mnemonicToSeed(mnemonic); // PBKDF2 → 64 bytes
 
-// 2. Generate encryption keypair (Curve25519 - for encryption ops)
-const encryptionKeypair = nacl.box.keyPair();
-const encryptionFingerprint = computeFingerprint(encryptionKeypair.publicKey);
+// 2. Derive identity key (Ed25519 via SLIP-0010)
+const identityPath = "ik:v1:ed25519/0/identity/0";
+const identityKeypair = deriveEd25519(seed, identityPath);
+const identityFingerprint = computeFingerprint(identityKeypair.publicKey); // Base58
 
-// 3. Encrypt both with passphrase (separate salts/nonces)
-const keyFile = encryptDualKeys(signingKeypair, encryptionKeypair, passphrase);
+// 3. Derive encryption key (X25519 via HKDF-SHA512)
+const encryptionPath = "ik:v1:x25519/0/encryption/0";
+const encryptionKeypair = deriveX25519(seed, encryptionPath);
+const encryptionFingerprint = computeFingerprint(encryptionKeypair.publicKey); // Base58
+
+// 4. Encrypt seed with passphrase (Argon2id KDF)
+const encryptedSeed = encryptSeed(seed, passphrase);
 ```
 
 ### Command Behavior Changes
 
 #### `keygen`
 
-- Generate **both** Ed25519 and Curve25519 keypairs
-- Display both fingerprints
-- Use signing fingerprint as primary persona identifier
+- Generate BIP-39 mnemonic (12 words)
+- Derive **both** Ed25519 identity and X25519 encryption keys via HD paths
+- Display mnemonic (one-time), both fingerprints
+- Use identity fingerprint as primary persona identifier
 
 #### `encrypt` / `decrypt`
 
-- Continue using Curve25519 encryption key
+- Use X25519 encryption key derived at `ik:v1:x25519/0/encryption/0`
 - No visible change to user
 
 #### `sign` / `verify` (new commands)
@@ -154,23 +198,18 @@ const keyFile = encryptDualKeys(signingKeypair, encryptionKeypair, passphrase);
    - Implement `persona publish` command
    - Implement identity verification
 
-## HD Key Generation (Future)
+## HD Key Hierarchy Details
 
-Beyond dual-key, support hierarchical deterministic (HD) key generation:
+See: `docs/architecture/hd-key-hierarchy-ik-v1.md`
 
-- **Master Seed:** Single seed generates all persona keys
-- **Key Derivation:** BIP-32/BIP-44 style paths
-- **Multiple Personas:** Derive signing + encryption keys per persona
-- **Backup:** Single seed backs up all keys
+**Key Points:**
 
-**Example Path Structure:**
-
-```
-m/44'/0'/0'/0/0  - Persona 0 signing key
-m/44'/0'/0'/1/0  - Persona 0 encryption key
-m/44'/0'/1'/0/0  - Persona 1 signing key
-m/44'/0'/1'/1/0  - Persona 1 encryption key
-```
+- Ed25519: SLIP-0010 hardened-only derivation
+- X25519: HKDF-SHA512 hardened derivation with domain separation
+- Personas are independent seeds (no cross-persona paths)
+- Path format: `ik:v1:<curve>/<account>/<role>/<index>`
+- Fingerprints: Base58-encoded SHA-256 of public key
+- Short form: `ed1-` or `x1-` prefix + base58btc of first 10 bytes
 
 ## Implementation Checklist
 

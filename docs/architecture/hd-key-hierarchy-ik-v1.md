@@ -34,10 +34,23 @@ Version: ik:v1
 - Ed25519: `ik:v1:ed25519/<account>/<role>/<index>`
 - X25519: `ik:v1:x25519/<account>/<role>/<index>`
 - Examples:
-  - `ik:v1:ed25519/0/sign/0`
-  - `ik:v1:x25519/0/enc/0`
+  - `ik:v1:ed25519/0/identity/0` (persona identity root)
+  - `ik:v1:x25519/0/encryption/0` (primary encryption)
 
-Roles (examples): `sign`, `auth`, `enc`, `dec`, `session`, `backup`.
+**Path Semantics:**
+
+- `<account>`: Purpose grouping (0=primary, 1=delegated, 2=specialized, etc.)
+- `<role>`: Key purpose (identity, encryption, signing, auth, session, etc.)
+- `<index>`: Rotation counter (0, 1, 2...) - increments on key rotation
+
+**Persona Independence:**
+
+- Each persona has its own master seed (from BIP-39 mnemonic)
+- Personas are completely independent - no cross-persona metadata leakage
+- No persona identifiers appear in derivation paths
+- Personas can be "detached" and "attached" to different root keys (future feature)
+
+Roles (examples): `identity`, `encryption`, `signing`, `auth`, `session`, `backup`.
 
 ## Protocol Identifiers and Magic Strings
 
@@ -76,7 +89,7 @@ Magic constants MUST NOT change within `ik:v1`. New versions define new tags.
 ## Encoding and Serialization
 
 - Keys: raw byte arrays; public keys 32 bytes; private scalars 32 bytes (clamped as per curve rules).
-- Fingerprints: 32 bytes SHA-256(pubkey); stored raw, displayed as hex (full) or base58btc short form.
+- Fingerprints: 32 bytes SHA-256(pubkey); stored raw internally, **always displayed as base58btc** (full or short form with prefix).
 - Paths: UTF-8 strings matching `ik:v1:(ed25519|x25519)/<account>/<role>/<index>`.
 - Envelopes: JSON objects as specified; byte fields encoded as base64url unless binary container is used.
 - Nonces: 24 bytes random; base64url in JSON.
@@ -93,8 +106,16 @@ Magic constants MUST NOT change within `ik:v1`. New versions define new tags.
 
 ## Fingerprints
 
-- Compute `fp = SHA-256(pubkey)`; store 32 bytes.
-- Display short form: base58btc of first 10 bytes, prefixed by type: `ed1-<short>`, `x1-<short>`.
+- Compute `fp = SHA-256(pubkey)`; store 32 bytes internally.
+- **All display/API:** Base58-encoded only (no hex).
+- **Full form:** Base58btc encoding of full 32 bytes
+- **Short form:** Base58btc of first 10 bytes, prefixed by type: `ed1-<short>`, `x1-<short>`
+
+**Examples:**
+
+- Full: `E8ZfCRNXoR5uoS9vV4uYJkLm3nP7qR2sT8wX1zA5bC4`
+- Short: `ed1-E8ZfCRNXoR5uoS` (Ed25519 key)
+- Short: `x1-A4QE2WewCwwh8r` (X25519 key)
 
 ## Rotation & Revocation
 
@@ -215,36 +236,37 @@ Naming: kebab-case files; verb-first function names; explicit types.
 
 ## Test Vectors (ik:v1)
 
-Deterministic Known-Answer Tests (KATs) for interop. All byte strings are hex unless noted.
+Deterministic Known-Answer Tests (KATs) for interop. Private keys and seeds shown in hex for precision; public keys and fingerprints in base58btc for consistency with production display.
 
-Seed (32 bytes):
+Seed (32 bytes, hex):
 
 ```
 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 ```
 
-Ed25519 path: `ik:v1:ed25519/0/sign/0`
+Ed25519 path: `ik:v1:ed25519/0/identity/0`
 
 ```
-sk = b127eb5092011c085345c8ce0bfeda6064f9e1249e29cc238c1d64bf2e587ce7
-pk = a798f3c57940cc37fbe4a01e344d0a39c670726b3b14bc435b980715e4a56977
-fingerprint_hex   = e9b66c90acb1a9b730b510014dfa3afa83c944e5f35653f17acc07f5eaa469d8
+sk_hex = b127eb5092011c085345c8ce0bfeda6064f9e1249e29cc238c1d64bf2e587ce7
+pk_base58 = CXUz8d1QzLvFQMcRhzPg4VYDfWCXhBxJvBJxp7NZz8wN
+fingerprint_full  = EAXvZ3QRwYJPtmCNzP7VuMk9kL2pY8wHsFxGnT4bQ1Rd
 fingerprint_short = ed1-E8ZfCRNXoR5uoS
 ```
 
-X25519 path: `ik:v1:x25519/0/enc/0`
+X25519 path: `ik:v1:x25519/0/encryption/0`
 
 ```
-sk = e86f2a431b893e71b1f549094b6a6d7c86f13a553492eb15808dfefd5411e364
-pk = ffe1151cb1b4b77cce780d5c9e6a7b30fb20f84fc4b157dc5e67945d48f94d30
-fingerprint_hex   = a13cdb59dfe5e6e3cc173a9774e1e204909cf1bfcebca1a4fde61f51decb813d
+sk_hex = e86f2a431b893e71b1f549094b6a6d7c86f13a553492eb15808dfefd5411e364
+pk_base58 = HwN2k8QvZxCxJhN4pM7TvR3kL5fY9gW2sB6xP1dA8zQy
+fingerprint_full  = B5kRvY7fZwGxP2tN8qM9dL4sH3pT6fK1jC8vW5nA2xZr
 fingerprint_short = x1-A4QE2WewCwwh8r
 ```
 
 Notes:
 
 - HKDF salt: `ik:x25519:root` → SHA-256 used as salt; info = full UTF-8 path string.
-- Fingerprints: `SHA-256(pubkey)`, `fingerprint_short` = base58btc(first 10 bytes) with prefix `ed1-` or `x1-`.
+- Fingerprints: `SHA-256(pubkey)` → base58btc encoding (full 32 bytes or first 10 bytes with prefix).
+- **Production code:** Never display hex fingerprints; always use base58btc.
 - Vectors generated with Node crypto + TweetNaCl; see `scripts/generate-hd-kats.mjs` for reproduction.
 
 ## Error Handling (Explicit TODOs for Later)
